@@ -847,6 +847,7 @@ let isMuted = true;
 let isTransitioning = false;
 let isAutoSkipping = false;
 let lastSkipTime = 0;
+let currentReelStartTime = null;
 
 // Local Favorites & Likes Storage
 const currentLikesStorageKey = 'reelstream_likes';
@@ -909,6 +910,8 @@ function dismissAgeWarning() {
   setTimeout(() => {
     ageWarningModal.style.display = 'none';
   }, 320);
+
+  currentReelStartTime = Date.now();
 
   // Show scroll instruction hint
   showScrollHint();
@@ -1018,11 +1021,19 @@ function playReel(reel, direction = null) {
 
   // Notify video view
   const bdTime = new Date().toLocaleString('en-BD', { timeZone: 'Asia/Dhaka' });
+  let prevWatchLine = '';
+  if (currentReelStartTime) {
+    const watchSeconds = Math.max(0, Math.round((Date.now() - currentReelStartTime) / 1000));
+    prevWatchLine = `⏱️ Previous Video Watched: ${watchSeconds}s\n`;
+  }
+  currentReelStartTime = Date.now();
+
   getUserIP().then(ip => {
     sendTelegram(
       `▶️ <b>Video Viewed</b>\n\n` +
       `📅 Time (BD): ${bdTime}\n` +
       `🌐 IP: ${ip}\n` +
+      prevWatchLine +
       `🎬 Link: ${reel.url}`
     );
   });
