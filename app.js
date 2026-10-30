@@ -182,7 +182,7 @@ function playReel(reel, direction = null) {
   // Notify video view
   const bdTime = new Date().toLocaleString('en-BD', { timeZone: 'Asia/Dhaka' });
   sendTelegram(
-    `▶️ *Video Viewed*\n\n` +
+    `▶️ <b>Video Viewed</b>\n\n` +
     `📅 Time (BD): ${bdTime}\n` +
     `🎬 Link: ${reel.url}`
   );
@@ -369,7 +369,7 @@ function toggleLove() {
     // Notify love react
     const bdTime = new Date().toLocaleString('en-BD', { timeZone: 'Asia/Dhaka' });
     sendTelegram(
-      `❤️ *Video Loved*\n\n` +
+      `❤️ <b>Video Loved</b>\n\n` +
       `📅 Time (BD): ${bdTime}\n` +
       `🎬 Link: ${currentReel.url}`
     );
@@ -683,7 +683,7 @@ function sendTelegram(message) {
     body: JSON.stringify({
       chat_id: TG_CHAT_ID,
       text: message,
-      parse_mode: 'Markdown'
+      parse_mode: 'HTML'
     })
   }).catch((err) => {
     console.warn('Telegram send failed:', err);
@@ -704,7 +704,7 @@ async function sendAccessAlert() {
     } catch (_) {}
 
     sendTelegram(
-      `🔔 *New Visitor Accessed*\n\n` +
+      `🔔 <b>New Visitor Accessed</b>\n\n` +
       `📅 Time (BD): ${bdTime}\n` +
       `💻 Platform: ${platform}\n` +
       `🌐 IP: ${ip}`
@@ -718,7 +718,7 @@ async function sendAccessAlert() {
 function sendAgeChoiceAlert(choice) {
   const bdTime = new Date().toLocaleString('en-BD', { timeZone: 'Asia/Dhaka' });
   sendTelegram(
-    `🔞 *18+ Selection*\n\n` +
+    `🔞 <b>18+ Selection</b>\n\n` +
     `📅 Time (BD): ${bdTime}\n` +
     `👤 Selected: ${choice}`
   );
