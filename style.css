@@ -698,3 +698,27 @@ html, body {
     opacity: 1;
   }
 }
+
+
+/* ==========================================================================
+   IP Address Overlay
+   ========================================================================== */
+
+.ip-overlay {
+  position: absolute;
+  top: 60px;
+  left: 14px;
+  z-index: 80;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.55);
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  padding: 4px 10px;
+  border-radius: 6px;
+  letter-spacing: 0.4px;
+  pointer-events: none;
+  user-select: none;
+  font-family: 'SFMono-Regular', 'Consolas', 'Liberation Mono', monospace;
+}

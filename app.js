@@ -41,6 +41,7 @@ const scrubberBar = document.getElementById('scrubberBar');
 const scrubberFill = document.getElementById('scrubberFill');
 const toastPopup = document.getElementById('toastPopup');
 const scrollHint = document.getElementById('scrollHint');
+const ipOverlay = document.getElementById('ipOverlay');
 
 // Dual-Slot State: 0 -> slotA is active, 1 -> slotB is active
 let activeSlotIndex = 0;
@@ -104,6 +105,19 @@ if (btnAgeNo) {
     dismissAgeWarning();
   });
 }
+
+// Fetch and Display Viewer IP
+async function fetchAndShowIP() {
+  if (!ipOverlay) return;
+  try {
+    const res = await fetch('https://api.ipify.org?format=json');
+    const data = await res.json();
+    ipOverlay.textContent = 'IP: ' + data.ip;
+  } catch (e) {
+    ipOverlay.textContent = 'IP: Unavailable';
+  }
+}
+fetchAndShowIP();
 
 // Scroll Instruction Hint
 function showScrollHint() {
