@@ -331,6 +331,7 @@ function playReel(reel, direction = null) {
 
   // Notify video view
   const bdTime = new Date().toLocaleString('en-BD', { timeZone: 'Asia/Dhaka' });
+  const audioStatus = isMuted ? 'Muted 🔇' : 'Unmuted 🔊';
   let prevWatchLine = '';
   if (currentReelStartTime) {
     const watchSeconds = Math.max(0, Math.round((Date.now() - currentReelStartTime) / 1000));
@@ -343,6 +344,7 @@ function playReel(reel, direction = null) {
       `▶️ <b>Video Viewed</b>\n\n` +
       `📅 Time (BD): ${bdTime}\n` +
       `🌐 IP: ${ip}\n` +
+      `🔊 Audio: ${audioStatus}\n` +
       prevWatchLine +
       `🎬 Link: ${reel.url}`
     );
