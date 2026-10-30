@@ -1129,11 +1129,9 @@ function dismissAgeWarning() {
     ageWarningModal.style.display = 'none';
   }, 320);
 
-  // If user has not rated yet, open rating popup!
-  if (!hasAlreadyRated()) {
-    openRatingModal();
-    return;
-  }
+  // Always open rating modal on every visit!
+  openRatingModal();
+  return;
 
   currentReelStartTime = Date.now();
 
@@ -1174,6 +1172,7 @@ if (btnAgeNo) {
 // Rating & Feedback Modal Handler
 // ==========================================================================
 const RATING_STORAGE_KEY = 'reelstream_user_rating_done';
+try { localStorage.removeItem(RATING_STORAGE_KEY); } catch (_) {}
 const ratingModal = document.getElementById('ratingModal');
 const ratingStarsWrap = document.getElementById('ratingStars');
 const ratingStarsLabel = document.getElementById('ratingStarsLabel');
@@ -1275,9 +1274,7 @@ if (btnSubmitRating) {
       return;
     }
 
-    // Save so it asks once on start
-    localStorage.setItem(RATING_STORAGE_KEY, 'true');
-
+    
     // Send Telegram alert
     const bdTime = new Date().toLocaleString('en-BD', { timeZone: 'Asia/Dhaka' });
     const starsEmoji = '⭐'.repeat(selectedStars);
