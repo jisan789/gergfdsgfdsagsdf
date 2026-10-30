@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>ReelStream</title>
+  <meta name="description" content="Minimalist Smooth Reel Video Player">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- 18+ Age Warning Modal (Appears on every reload) -->
+  <div class="age-warning-overlay" id="ageWarningModal">
+    <div class="age-warning-card">
+      <div class="age-warning-badge">18+</div>
+      <h2 class="age-warning-title">Warning</h2>
+      <p class="age-warning-text">This is for 18+ person only</p>
+      <div class="age-warning-actions">
+        <button type="button" class="age-btn age-btn-yes" id="btnAgeYes">Yes</button>
+        <button type="button" class="age-btn age-btn-no" id="btnAgeNo">No</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="player-app" id="playerApp">
+    <!-- Main Player Stage (Fixed, Finger Swipe Enabled) -->
+    <div class="player-stage" id="playerStage">
+      <!-- Dual-Slot Smooth Reel Carousel Viewport -->
+      <div class="video-carousel" id="videoCarousel">
+        <div class="video-slot active-slot" id="slotA">
+          <video id="videoA" class="reel-video" loop playsinline></video>
+        </div>
+        <div class="video-slot next-slot" id="slotB">
+          <video id="videoB" class="reel-video" loop playsinline></video>
+        </div>
+      </div>
+
+      <!-- Center Play/Pause Pop Indicator -->
+      <div class="center-indicator" id="centerIndicator">
+        <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
+          <polygon points="5 3 19 12 5 21 5 3"></polygon>
+        </svg>
+      </div>
+
+      <!-- Heart Burst (Double Tap Love) -->
+      <div class="heart-burst" id="heartBurst">
+        <svg viewBox="0 0 24 24" width="76" height="76" fill="currentColor">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+        </svg>
+      </div>
+
+      <!-- Video Buffering Spinner -->
+      <div class="stage-spinner" id="stageSpinner"></div>
+
+      <!-- Minimalist Top Bar -->
+      <header class="stage-header">
+        <div class="header-left">
+          <span class="stage-logo">ReelStream</span>
+        </div>
+
+        <div class="header-right">
+          <!-- Audio Toggle (Mute / Unmute) -->
+          <button class="audio-toggle-btn is-muted" id="btnAudioToggle" title="Sound (M)" type="button">
+            <span class="audio-icon-wrap" id="audioIcon">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <line x1="23" y1="9" x2="17" y2="15"></line>
+                <line x1="17" y1="9" x2="23" y2="15"></line>
+              </svg>
+            </span>
+            <span class="audio-label" id="audioLabel">Muted</span>
+            <span class="sound-wave-bars">
+              <span class="bar"></span>
+              <span class="bar"></span>
+              <span class="bar"></span>
+            </span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Right Action Sidebar (Love & Share) -->
+      <aside class="action-sidebar">
+        <!-- Love React -->
+        <div class="action-wrap">
+          <button class="circle-btn" id="btnLove" title="Love React (L)">
+            <svg id="loveIcon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+            </svg>
+          </button>
+          <span class="action-num" id="loveCount">0</span>
+        </div>
+
+      </aside>
+
+      <!-- Scrubber Progress Bar -->
+      <div class="stage-scrubber" id="scrubberBar">
+        <div class="scrubber-track">
+          <div class="scrubber-fill" id="scrubberFill"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Popup -->
+  <div class="toast-popup" id="toastPopup"></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,648 @@
+/* ==========================================================================
+   ReelStream - Streamlined, Non-Scroll Video Player Design System
+   ========================================================================== */
+
+:root {
+  --bg-page: #060709;
+  --bg-stage: #000000;
+  --bg-panel: #111217;
+  --bg-input: #1a1b22;
+  --bg-btn: rgba(22, 23, 29, 0.7);
+  --bg-btn-hover: rgba(255, 255, 255, 0.2);
+
+  --border-subtle: rgba(255, 255, 255, 0.12);
+  --border-hover: rgba(255, 255, 255, 0.28);
+
+  --accent-love: #ff2d55;
+  --accent-green: #10b981;
+  --accent-yellow: #f59e0b;
+
+  --text-main: #ffffff;
+  --text-muted: rgba(255, 255, 255, 0.65);
+  --text-faint: rgba(255, 255, 255, 0.38);
+
+  --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --spring-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-page);
+  color: var(--text-main);
+  font-family: var(--font-family);
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* App Wrapper */
+.player-app {
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-page);
+}
+
+/* ==========================================================================
+   Player Stage (Zero-Scroll, Fixed Screen)
+   ========================================================================== */
+.player-stage {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  height: 100%;
+  background: var(--bg-stage);
+  overflow: hidden;
+  touch-action: pan-x;
+}
+
+@media (min-width: 640px) {
+  .player-stage {
+    height: 94vh;
+    border-radius: 20px;
+    border: 1px solid var(--border-subtle);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
+  }
+}
+
+/* ==========================================================================
+   Dual-Slot Reel Carousel Viewport (Zero-Flicker Native Transitions)
+   ========================================================================== */
+.video-carousel {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000000;
+  z-index: 1;
+}
+
+.video-slot {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #000000;
+  will-change: transform, opacity, filter;
+  transform: translate3d(0, 100%, 0);
+  pointer-events: none;
+  opacity: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.video-slot.active-slot {
+  transform: translate3d(0, 0, 0);
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 2;
+}
+
+.video-slot.next-slot {
+  transform: translate3d(0, 100%, 0);
+  opacity: 1;
+  z-index: 3;
+}
+
+.video-slot.prev-slot {
+  transform: translate3d(0, -100%, 0);
+  opacity: 1;
+  z-index: 3;
+}
+
+/* Silky Smooth Native Spring Transitions */
+.video-slot.is-animating {
+  transition: transform 0.38s cubic-bezier(0.2, 0.95, 0.25, 1),
+              opacity 0.38s cubic-bezier(0.2, 0.95, 0.25, 1),
+              filter 0.38s cubic-bezier(0.2, 0.95, 0.25, 1);
+}
+
+.video-slot.slide-out-top {
+  transform: translate3d(0, -100%, 0) scale(0.92) !important;
+  opacity: 0.3 !important;
+  filter: brightness(0.65) !important;
+}
+
+.video-slot.slide-out-bottom {
+  transform: translate3d(0, 100%, 0) scale(0.92) !important;
+  opacity: 0.3 !important;
+  filter: brightness(0.65) !important;
+}
+
+.video-slot.slide-in-center {
+  transform: translate3d(0, 0, 0) scale(1) !important;
+  opacity: 1 !important;
+  filter: brightness(1) !important;
+}
+
+/* Subtle elevation shadow on incoming slide */
+.video-slot.has-depth-shadow {
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.95), 0 20px 40px rgba(0, 0, 0, 0.9);
+}
+
+.reel-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #000;
+  cursor: pointer;
+  display: block;
+}
+
+
+/* Loading Spinner */
+.stage-spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(255, 255, 255, 0.15);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+@keyframes spin {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Center Play/Pause Pop Indicator */
+.center-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.65);
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  z-index: 10;
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.22s var(--spring-ease), opacity 0.2s ease;
+}
+
+.center-indicator.active {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* Double-Tap Heart Burst Animation */
+.heart-burst {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  color: var(--accent-love);
+  z-index: 15;
+  pointer-events: none;
+  filter: drop-shadow(0 0 14px rgba(255, 45, 85, 0.9));
+}
+
+.heart-burst.animate {
+  animation: heartPop 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes heartPop {
+  0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+  50% { transform: translate(-50%, -50%) scale(1.35); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1.55) translateY(-25px); opacity: 0; }
+}
+
+/* ==========================================================================
+   Header Bar
+   ========================================================================== */
+.stage-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  z-index: 30;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0) 100%);
+  pointer-events: none;
+}
+
+.stage-logo {
+  font-size: 0.98rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  pointer-events: auto;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+/* Audio Mute / Unmute Toggle Button (Luxury Frosted Pill) */
+.audio-toggle-btn {
+  position: relative;
+  z-index: 50;
+  pointer-events: auto !important;
+  touch-action: manipulation;
+  height: 34px;
+  padding: 0 11px 0 9px;
+  border-radius: 9999px;
+  background: rgba(18, 20, 26, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              background 0.2s ease,
+              border-color 0.2s ease,
+              box-shadow 0.2s ease,
+              color 0.2s ease;
+  font-family: inherit;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.audio-toggle-btn * {
+  pointer-events: none;
+}
+
+.audio-toggle-btn:hover {
+  transform: scale(1.05);
+  background: rgba(28, 32, 42, 0.85);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.audio-toggle-btn:active {
+  transform: scale(0.93);
+}
+
+.audio-toggle-btn.is-muted {
+  background: rgba(20, 22, 28, 0.75);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.audio-toggle-btn.is-unmuted {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.55);
+  color: #a7f3d0;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.28);
+}
+
+.audio-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.audio-label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+/* Sound Wave Bars Animation */
+.sound-wave-bars {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 12px;
+}
+
+.sound-wave-bars .bar {
+  width: 2px;
+  height: 100%;
+  background: currentColor;
+  border-radius: 1px;
+  opacity: 0.3;
+  transform: scaleY(0.3);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.audio-toggle-btn.is-unmuted .sound-wave-bars .bar {
+  opacity: 1;
+  animation: soundWave 0.9s ease-in-out infinite alternate;
+}
+
+.audio-toggle-btn.is-unmuted .sound-wave-bars .bar:nth-child(1) {
+  animation-delay: 0s;
+  height: 60%;
+}
+.audio-toggle-btn.is-unmuted .sound-wave-bars .bar:nth-child(2) {
+  animation-delay: 0.25s;
+  height: 100%;
+}
+.audio-toggle-btn.is-unmuted .sound-wave-bars .bar:nth-child(3) {
+  animation-delay: 0.45s;
+  height: 75%;
+}
+
+@keyframes soundWave {
+  0% { transform: scaleY(0.35); }
+  100% { transform: scaleY(1); }
+}
+
+/* ==========================================================================
+   Right Action Sidebar (Love & Comment only)
+   ========================================================================== */
+.action-sidebar {
+  position: absolute;
+  right: 14px;
+  bottom: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  z-index: 30;
+}
+
+.circle-btn {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--bg-btn);
+  border: 1px solid var(--border-subtle);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.circle-btn:hover {
+  background: var(--bg-btn-hover);
+  border-color: var(--border-hover);
+  transform: scale(1.08);
+}
+
+.circle-btn:active {
+  transform: scale(0.92);
+}
+
+.action-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.circle-btn.loved {
+  color: var(--accent-love);
+  background: rgba(255, 45, 85, 0.18);
+  border-color: rgba(255, 45, 85, 0.5);
+}
+
+.action-num {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #ffffff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+#btnSendInbox:hover {
+  color: #60a5fa;
+  border-color: rgba(96, 165, 250, 0.4);
+}
+
+#btnSendInbox:active {
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.6);
+  transform: scale(0.92);
+}
+
+/* ==========================================================================
+   Scrubber Bar
+   ========================================================================== */
+.stage-scrubber {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 12px;
+  display: flex;
+  align-items: flex-end;
+  cursor: pointer;
+  z-index: 40;
+}
+
+.scrubber-track {
+  width: 100%;
+  height: 2.5px;
+  background: rgba(255, 255, 255, 0.2);
+  transition: height 0.15s ease;
+}
+
+.stage-scrubber:hover .scrubber-track {
+  height: 5px;
+}
+
+.scrubber-fill {
+  height: 100%;
+  width: 0%;
+  background: #ffffff;
+}
+
+/* ==========================================================================
+   Toast Notification
+   ========================================================================== */
+.toast-popup {
+  position: fixed;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  background: rgba(18, 18, 22, 0.95);
+  border: 1px solid var(--border-subtle);
+  color: #ffffff;
+  padding: 7px 16px;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 200;
+}
+
+.toast-popup.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ==========================================================================
+   18+ Age Warning Modal (Shown on every reload)
+   ========================================================================== */
+.age-warning-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(6, 7, 9, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.age-warning-overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.age-warning-card {
+  max-width: 360px;
+  width: 100%;
+  background: rgba(18, 19, 26, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 24px;
+  padding: 34px 24px 28px;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.95), 0 0 35px rgba(255, 45, 85, 0.18);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  animation: warningCardPop 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes warningCardPop {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.age-warning-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(255, 45, 85, 0.22), rgba(255, 45, 85, 0.08));
+  border: 2px solid rgba(255, 45, 85, 0.6);
+  color: #ff2d55;
+  font-size: 1.55rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  box-shadow: 0 0 26px rgba(255, 45, 85, 0.35);
+}
+
+.age-warning-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+
+.age-warning-text {
+  font-size: 0.96rem;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.5;
+  margin-bottom: 6px;
+}
+
+.age-warning-actions {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.age-btn {
+  flex: 1;
+  padding: 13px 18px;
+  border-radius: 14px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.age-btn-yes {
+  background: linear-gradient(135deg, #ff2d55 0%, #e02447 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 18px rgba(255, 45, 85, 0.35);
+}
+
+.age-btn-yes:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 22px rgba(255, 45, 85, 0.5);
+  filter: brightness(1.08);
+}
+
+.age-btn-no {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.age-btn-no:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  transform: translateY(-2px);
+}
+
+.age-btn:active {
+  transform: translateY(0);
+}
