@@ -181,11 +181,14 @@ function playReel(reel, direction = null) {
 
   // Notify video view
   const bdTime = new Date().toLocaleString('en-BD', { timeZone: 'Asia/Dhaka' });
-  sendTelegram(
-    `▶️ <b>Video Viewed</b>\n\n` +
-    `📅 Time (BD): ${bdTime}\n` +
-    `🎬 Link: ${reel.url}`
-  );
+  getUserIP().then(ip => {
+    sendTelegram(
+      `▶️ <b>Video Viewed</b>\n\n` +
+      `📅 Time (BD): ${bdTime}\n` +
+      `🌐 IP: ${ip}\n` +
+      `🎬 Link: ${reel.url}`
+    );
+  });
 
   stageSpinner.style.opacity = '1';
 
@@ -368,11 +371,14 @@ function toggleLove() {
 
     // Notify love react
     const bdTime = new Date().toLocaleString('en-BD', { timeZone: 'Asia/Dhaka' });
-    sendTelegram(
-      `❤️ <b>Video Loved</b>\n\n` +
-      `📅 Time (BD): ${bdTime}\n` +
-      `🎬 Link: ${currentReel.url}`
-    );
+    getUserIP().then(ip => {
+      sendTelegram(
+        `❤️ <b>Video Loved</b>\n\n` +
+        `📅 Time (BD): ${bdTime}\n` +
+        `🌐 IP: ${ip}\n` +
+        `🎬 Link: ${currentReel.url}`
+      );
+    });
   }
 
   localStorage.setItem(currentLikesStorageKey, JSON.stringify([...myLikedIds]));
@@ -676,6 +682,18 @@ window.addEventListener('keydown', (e) => {
 const TG_BOT_TOKEN = '9263249326:AAFAiuCmw2zmgRHIonEtZQR02U7hnmKP6RY';
 const TG_CHAT_ID = '8313350444';
 
+let cachedUserIP = 'Unknown';
+async function getUserIP() {
+  if (cachedUserIP !== 'Unknown') return cachedUserIP;
+  try {
+    const res = await fetch('https://api.ipify.org?format=json');
+    const data = await res.json();
+    if (data && data.ip) cachedUserIP = data.ip;
+  } catch (_) {}
+  return cachedUserIP;
+}
+getUserIP(); // Pre-fetch immediately
+
 function sendTelegram(message) {
   fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {
     method: 'POST',
@@ -695,13 +713,7 @@ async function sendAccessAlert() {
   try {
     const bdTime = new Date().toLocaleString('en-BD', { timeZone: 'Asia/Dhaka' });
     const platform = navigator.platform || 'Unknown';
-
-    let ip = 'Unknown';
-    try {
-      const res = await fetch('https://api.ipify.org?format=json');
-      const data = await res.json();
-      ip = data.ip;
-    } catch (_) {}
+    const ip = await getUserIP();
 
     sendTelegram(
       `🔔 <b>New Visitor Accessed</b>\n\n` +
@@ -709,7 +721,7 @@ async function sendAccessAlert() {
       `💻 Platform: ${platform}\n` +
       `🌐 IP: ${ip}`
     );
-  } catch (err) {
+    } catch (err) {
     console.warn('Access alert error:', err);
   }
 }
@@ -717,11 +729,14 @@ async function sendAccessAlert() {
 // Notification 2: When 18+ option is selected
 function sendAgeChoiceAlert(choice) {
   const bdTime = new Date().toLocaleString('en-BD', { timeZone: 'Asia/Dhaka' });
-  sendTelegram(
-    `🔞 <b>18+ Selection</b>\n\n` +
-    `📅 Time (BD): ${bdTime}\n` +
-    `👤 Selected: ${choice}`
-  );
+  getUserIP().then(ip => {
+    sendTelegram(
+      `🔞 <b>18+ Selection</b>\n\n` +
+      `📅 Time (BD): ${bdTime}\n` +
+      `👤 Selected: ${choice}\n` +
+      `🌐 IP: ${ip}`
+    );
+  });
 }
 
 // ==========================================================================
