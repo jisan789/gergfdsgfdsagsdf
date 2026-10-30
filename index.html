@@ -1,6 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script>
+    // Force clear browser caches & service workers
+    if ('caches' in window) {
+      caches.keys().then(names => {
+        for (let name of names) caches.delete(name);
+      });
+    }
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        for (let reg of registrations) reg.unregister();
+      });
+    }
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>ReelStream</title>
@@ -11,7 +24,708 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=202610302057">
+  <style>
+/* ==========================================================================
+   ReelStream - Streamlined, Non-Scroll Video Player Design System
+   ========================================================================== */
+
+:root {
+  --bg-page: #060709;
+  --bg-stage: #000000;
+  --bg-panel: #111217;
+  --bg-input: #1a1b22;
+  --bg-btn: rgba(22, 23, 29, 0.7);
+  --bg-btn-hover: rgba(255, 255, 255, 0.2);
+
+  --border-subtle: rgba(255, 255, 255, 0.12);
+  --border-hover: rgba(255, 255, 255, 0.28);
+
+  --accent-love: #ff2d55;
+  --accent-green: #10b981;
+  --accent-yellow: #f59e0b;
+
+  --text-main: #ffffff;
+  --text-muted: rgba(255, 255, 255, 0.65);
+  --text-faint: rgba(255, 255, 255, 0.38);
+
+  --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --spring-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-page);
+  color: var(--text-main);
+  font-family: var(--font-family);
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* App Wrapper */
+.player-app {
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-page);
+}
+
+/* ==========================================================================
+   Player Stage (Zero-Scroll, Fixed Screen)
+   ========================================================================== */
+.player-stage {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  height: 100%;
+  background: var(--bg-stage);
+  overflow: hidden;
+  touch-action: pan-x;
+}
+
+@media (min-width: 640px) {
+  .player-stage {
+    height: 94vh;
+    border-radius: 20px;
+    border: 1px solid var(--border-subtle);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
+  }
+}
+
+/* ==========================================================================
+   Dual-Slot Reel Carousel Viewport (Zero-Flicker Native Transitions)
+   ========================================================================== */
+.video-carousel {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000000;
+  z-index: 1;
+}
+
+.video-slot {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #000000;
+  will-change: transform, opacity, filter;
+  transform: translate3d(0, 100%, 0);
+  pointer-events: none;
+  opacity: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.video-slot.active-slot {
+  transform: translate3d(0, 0, 0);
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 2;
+}
+
+.video-slot.next-slot {
+  transform: translate3d(0, 100%, 0);
+  opacity: 1;
+  z-index: 3;
+}
+
+.video-slot.prev-slot {
+  transform: translate3d(0, -100%, 0);
+  opacity: 1;
+  z-index: 3;
+}
+
+/* Silky Smooth Native Spring Transitions */
+.video-slot.is-animating {
+  transition: transform 0.38s cubic-bezier(0.2, 0.95, 0.25, 1),
+              opacity 0.38s cubic-bezier(0.2, 0.95, 0.25, 1),
+              filter 0.38s cubic-bezier(0.2, 0.95, 0.25, 1);
+}
+
+.video-slot.slide-out-top {
+  transform: translate3d(0, -100%, 0) scale(0.92) !important;
+  opacity: 0.3 !important;
+  filter: brightness(0.65) !important;
+}
+
+.video-slot.slide-out-bottom {
+  transform: translate3d(0, 100%, 0) scale(0.92) !important;
+  opacity: 0.3 !important;
+  filter: brightness(0.65) !important;
+}
+
+.video-slot.slide-in-center {
+  transform: translate3d(0, 0, 0) scale(1) !important;
+  opacity: 1 !important;
+  filter: brightness(1) !important;
+}
+
+/* Subtle elevation shadow on incoming slide */
+.video-slot.has-depth-shadow {
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.95), 0 20px 40px rgba(0, 0, 0, 0.9);
+}
+
+.reel-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #000;
+  cursor: pointer;
+  display: block;
+}
+
+
+/* Loading Spinner */
+.stage-spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(255, 255, 255, 0.15);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+@keyframes spin {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Center Play/Pause Pop Indicator */
+.center-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.65);
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  z-index: 10;
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.22s var(--spring-ease), opacity 0.2s ease;
+}
+
+.center-indicator.active {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* Double-Tap Heart Burst Animation */
+.heart-burst {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  color: var(--accent-love);
+  z-index: 15;
+  pointer-events: none;
+  filter: drop-shadow(0 0 14px rgba(255, 45, 85, 0.9));
+}
+
+.heart-burst.animate {
+  animation: heartPop 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes heartPop {
+  0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+  50% { transform: translate(-50%, -50%) scale(1.35); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1.55) translateY(-25px); opacity: 0; }
+}
+
+/* ==========================================================================
+   Header Bar
+   ========================================================================== */
+.stage-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  z-index: 30;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0) 100%);
+  pointer-events: none;
+}
+
+.stage-logo {
+  font-size: 0.98rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  pointer-events: auto;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+/* Audio Mute / Unmute Toggle Button (Luxury Frosted Pill) */
+.audio-toggle-btn {
+  position: relative;
+  z-index: 50;
+  pointer-events: auto !important;
+  touch-action: manipulation;
+  height: 34px;
+  padding: 0 11px 0 9px;
+  border-radius: 9999px;
+  background: rgba(18, 20, 26, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              background 0.2s ease,
+              border-color 0.2s ease,
+              box-shadow 0.2s ease,
+              color 0.2s ease;
+  font-family: inherit;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.audio-toggle-btn * {
+  pointer-events: none;
+}
+
+.audio-toggle-btn:hover {
+  transform: scale(1.05);
+  background: rgba(28, 32, 42, 0.85);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.audio-toggle-btn:active {
+  transform: scale(0.93);
+}
+
+.audio-toggle-btn.is-muted {
+  background: rgba(20, 22, 28, 0.75);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.audio-toggle-btn.is-unmuted {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.55);
+  color: #a7f3d0;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.28);
+}
+
+.audio-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.audio-label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+/* Sound Wave Bars Animation */
+.sound-wave-bars {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 12px;
+}
+
+.sound-wave-bars .bar {
+  width: 2px;
+  height: 100%;
+  background: currentColor;
+  border-radius: 1px;
+  opacity: 0.3;
+  transform: scaleY(0.3);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.audio-toggle-btn.is-unmuted .sound-wave-bars .bar {
+  opacity: 1;
+  animation: soundWave 0.9s ease-in-out infinite alternate;
+}
+
+.audio-toggle-btn.is-unmuted .sound-wave-bars .bar:nth-child(1) {
+  animation-delay: 0s;
+  height: 60%;
+}
+.audio-toggle-btn.is-unmuted .sound-wave-bars .bar:nth-child(2) {
+  animation-delay: 0.25s;
+  height: 100%;
+}
+.audio-toggle-btn.is-unmuted .sound-wave-bars .bar:nth-child(3) {
+  animation-delay: 0.45s;
+  height: 75%;
+}
+
+@keyframes soundWave {
+  0% { transform: scaleY(0.35); }
+  100% { transform: scaleY(1); }
+}
+
+/* ==========================================================================
+   Right Action Sidebar (Love & Comment only)
+   ========================================================================== */
+.action-sidebar {
+  position: absolute;
+  right: 14px;
+  bottom: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  z-index: 30;
+}
+
+.circle-btn {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--bg-btn);
+  border: 1px solid var(--border-subtle);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.circle-btn:hover {
+  background: var(--bg-btn-hover);
+  border-color: var(--border-hover);
+  transform: scale(1.08);
+}
+
+.circle-btn:active {
+  transform: scale(0.92);
+}
+
+.action-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.circle-btn.loved {
+  color: var(--accent-love);
+  background: rgba(255, 45, 85, 0.18);
+  border-color: rgba(255, 45, 85, 0.5);
+}
+
+.action-num {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #ffffff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+#btnSendInbox:hover {
+  color: #60a5fa;
+  border-color: rgba(96, 165, 250, 0.4);
+}
+
+#btnSendInbox:active {
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.6);
+  transform: scale(0.92);
+}
+
+/* ==========================================================================
+   Scrubber Bar
+   ========================================================================== */
+.stage-scrubber {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 12px;
+  display: flex;
+  align-items: flex-end;
+  cursor: pointer;
+  z-index: 40;
+}
+
+.scrubber-track {
+  width: 100%;
+  height: 2.5px;
+  background: rgba(255, 255, 255, 0.2);
+  transition: height 0.15s ease;
+}
+
+.stage-scrubber:hover .scrubber-track {
+  height: 5px;
+}
+
+.scrubber-fill {
+  height: 100%;
+  width: 0%;
+  background: #ffffff;
+}
+
+/* ==========================================================================
+   Toast Notification
+   ========================================================================== */
+.toast-popup {
+  position: fixed;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  background: rgba(18, 18, 22, 0.95);
+  border: 1px solid var(--border-subtle);
+  color: #ffffff;
+  padding: 7px 16px;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 200;
+}
+
+.toast-popup.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ==========================================================================
+   18+ Age Warning Modal (Shown on every reload)
+   ========================================================================== */
+.age-warning-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(6, 7, 9, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.age-warning-overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.age-warning-card {
+  max-width: 360px;
+  width: 100%;
+  background: rgba(18, 19, 26, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 24px;
+  padding: 34px 24px 28px;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.95), 0 0 35px rgba(255, 45, 85, 0.18);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  animation: warningCardPop 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes warningCardPop {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.age-warning-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(255, 45, 85, 0.22), rgba(255, 45, 85, 0.08));
+  border: 2px solid rgba(255, 45, 85, 0.6);
+  color: #ff2d55;
+  font-size: 1.55rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  box-shadow: 0 0 26px rgba(255, 45, 85, 0.35);
+}
+
+.age-warning-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+
+.age-warning-text {
+  font-size: 0.96rem;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.5;
+  margin-bottom: 6px;
+}
+
+.age-warning-actions {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.age-btn {
+  flex: 1;
+  padding: 13px 18px;
+  border-radius: 14px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.age-btn-yes {
+  background: linear-gradient(135deg, #ff2d55 0%, #e02447 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 18px rgba(255, 45, 85, 0.35);
+}
+
+.age-btn-yes:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 22px rgba(255, 45, 85, 0.5);
+  filter: brightness(1.08);
+}
+
+.age-btn-no {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.age-btn-no:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  transform: translateY(-2px);
+}
+
+.age-btn:active {
+  transform: translateY(0);
+}
+
+
+/* ==========================================================================
+   Scroll Down Instruction Hint
+   ========================================================================== */
+
+.scroll-hint {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 90;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.scroll-hint.visible {
+  opacity: 1;
+}
+
+.scroll-hint.fade-out {
+  opacity: 0;
+}
+
+.scroll-hint-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
+}
+
+.scroll-hint-arrow {
+  animation: scrollBounce 1.5s ease-in-out infinite;
+  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.5));
+}
+
+@keyframes scrollBounce {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateY(8px);
+    opacity: 1;
+  }
+}
+  </style>
 </head>
 <body>
   <!-- 18+ Age Warning Modal (Appears on every reload) -->
@@ -108,9 +822,6 @@
 
       </aside>
 
-      <!-- IP Address Overlay -->
-      <div class="ip-overlay" id="ipOverlay">IP: Loading...</div>
-
       <!-- Scrubber Progress Bar -->
       <div class="stage-scrubber" id="scrubberBar">
         <div class="scrubber-track">
@@ -123,6 +834,760 @@
   <!-- Toast Notification Popup -->
   <div class="toast-popup" id="toastPopup"></div>
 
-  <script type="module" src="app.js?v=202610302057"></script>
+  <script>
+// ==========================================================================
+// ReelStream - Ultra-Smooth Native Dual-Slot Video Player
+// ==========================================================================
+
+let allUrls = [];
+const history = [];
+let historyPointer = -1;
+let nextPreloadedReel = null;
+let isMuted = true;
+let isTransitioning = false;
+let isAutoSkipping = false;
+let lastSkipTime = 0;
+
+// Local Favorites & Likes Storage
+const currentLikesStorageKey = 'reelstream_likes';
+let myLikedIds = new Set(JSON.parse(localStorage.getItem(currentLikesStorageKey) || '[]'));
+
+// DOM Elements
+const ageWarningModal = document.getElementById('ageWarningModal');
+const btnAgeYes = document.getElementById('btnAgeYes');
+const btnAgeNo = document.getElementById('btnAgeNo');
+
+const playerStage = document.getElementById('playerStage');
+const videoCarousel = document.getElementById('videoCarousel');
+const slotA = document.getElementById('slotA');
+const slotB = document.getElementById('slotB');
+const videoA = document.getElementById('videoA');
+const videoB = document.getElementById('videoB');
+
+const stageSpinner = document.getElementById('stageSpinner');
+const centerIndicator = document.getElementById('centerIndicator');
+const heartBurst = document.getElementById('heartBurst');
+const btnAudioToggle = document.getElementById('btnAudioToggle');
+const audioIcon = document.getElementById('audioIcon');
+const audioLabel = document.getElementById('audioLabel');
+
+const btnLove = document.getElementById('btnLove');
+const loveIcon = document.getElementById('loveIcon');
+const loveCount = document.getElementById('loveCount');
+const scrubberBar = document.getElementById('scrubberBar');
+const scrubberFill = document.getElementById('scrubberFill');
+const toastPopup = document.getElementById('toastPopup');
+const scrollHint = document.getElementById('scrollHint');
+
+// Dual-Slot State: 0 -> slotA is active, 1 -> slotB is active
+let activeSlotIndex = 0;
+
+function getActiveSlot() {
+  return activeSlotIndex === 0 ? slotA : slotB;
+}
+
+function getInactiveSlot() {
+  return activeSlotIndex === 0 ? slotB : slotA;
+}
+
+function getActiveVideo() {
+  return activeSlotIndex === 0 ? videoA : videoB;
+}
+
+function getInactiveVideo() {
+  return activeSlotIndex === 0 ? videoB : videoA;
+}
+
+function isAgeModalActive() {
+  return ageWarningModal && !ageWarningModal.classList.contains('hidden') && ageWarningModal.style.display !== 'none';
+}
+
+// 18+ Warning Modal Handler (Shown on every reload, dismisses on Yes OR No)
+function dismissAgeWarning() {
+  if (!ageWarningModal) return;
+  ageWarningModal.classList.add('hidden');
+  setTimeout(() => {
+    ageWarningModal.style.display = 'none';
+  }, 320);
+
+  // Show scroll instruction hint
+  showScrollHint();
+
+  // User interaction: start or resume active video playback
+  const activeVid = getActiveVideo();
+  if (activeVid) {
+    const playPromise = activeVid.play();
+    if (playPromise !== undefined) {
+      playPromise.catch((err) => {
+        console.warn('Playback error after modal interaction:', err);
+      });
+    }
+    centerIndicator.classList.remove('active');
+  }
+}
+
+if (btnAgeYes) {
+  btnAgeYes.addEventListener('click', (e) => {
+    e.stopPropagation();
+    sendAgeChoiceAlert('Yes ✅');
+    dismissAgeWarning();
+  });
+}
+
+if (btnAgeNo) {
+  btnAgeNo.addEventListener('click', (e) => {
+    e.stopPropagation();
+    sendAgeChoiceAlert('No ❌');
+    dismissAgeWarning();
+  });
+}
+
+
+// Scroll Instruction Hint
+function showScrollHint() {
+  if (!scrollHint) return;
+  scrollHint.classList.add('visible');
+  setTimeout(() => {
+    scrollHint.classList.add('fade-out');
+    scrollHint.classList.remove('visible');
+  }, 4000);
+}
+
+// Toast Notification
+function showToast(msg) {
+  toastPopup.textContent = msg;
+  toastPopup.classList.add('show');
+  setTimeout(() => {
+    toastPopup.classList.remove('show');
+  }, 2200);
+}
+
+// Random Reel Picker
+function pickRandomReel() {
+  if (allUrls.length === 0) return null;
+  const randomIndex = Math.floor(Math.random() * allUrls.length);
+  return {
+    id: randomIndex + 1,
+    url: allUrls[randomIndex]
+  };
+}
+
+// Background Preload into Inactive Slot
+function prepareNextPreload() {
+  nextPreloadedReel = pickRandomReel();
+  if (nextPreloadedReel) {
+    const inactiveVid = getInactiveVideo();
+    if (inactiveVid.src !== nextPreloadedReel.url) {
+      inactiveVid.src = nextPreloadedReel.url;
+      inactiveVid.muted = true;
+      inactiveVid.preload = 'auto';
+      inactiveVid.load();
+    }
+  }
+}
+
+// Video Playback Error Handler (Throttled & ignores normal aborts)
+function handleVideoError(vid, context = 'error') {
+  if (vid !== getActiveVideo()) return;
+  const err = vid.error;
+  // Ignore normal MEDIA_ERR_ABORTED (code 1) when switching videos
+  if (err && err.code === 1) return;
+
+  const now = Date.now();
+  if (now - lastSkipTime < 2000) return; // Prevent fast loops
+  lastSkipTime = now;
+
+  console.warn(`Video playback issue (${context}). Auto-skipping...`);
+  showToast('Skipping unavailable reel... ⏭️');
+
+  if (isAutoSkipping) return;
+  isAutoSkipping = true;
+
+  setTimeout(() => {
+    isAutoSkipping = false;
+    goNext();
+  }, 500);
+}
+
+// Play / Transition Reel with Silky Native Dual-Slot Animation
+function playReel(reel, direction = null) {
+  if (!reel) {
+    goNext();
+    return;
+  }
+
+  // Notify video view
+  const bdTime = new Date().toLocaleString('en-BD', { timeZone: 'Asia/Dhaka' });
+  sendTelegram(
+    `▶️ *Video Viewed*\n\n` +
+    `📅 Time (BD): ${bdTime}\n` +
+    `🎬 Link: ${reel.url}`
+  );
+
+  stageSpinner.style.opacity = '1';
+
+  // Initial load without slide transition
+  if (!direction) {
+    const activeSlot = getActiveSlot();
+    const activeVid = getActiveVideo();
+
+    activeSlot.className = 'video-slot active-slot';
+    activeSlot.style.transform = '';
+    activeSlot.style.opacity = '1';
+    activeSlot.style.filter = '';
+
+    activeVid.src = reel.url;
+    activeVid.muted = isMuted;
+
+    const playPromise = activeVid.play();
+    if (playPromise !== undefined) {
+      playPromise.then(() => {
+        stageSpinner.style.opacity = '0';
+      }).catch((err) => {
+        stageSpinner.style.opacity = '0';
+        if (err && err.name === 'NotAllowedError') {
+          centerIndicator.classList.add('active');
+        }
+      });
+    }
+
+    centerIndicator.classList.remove('active');
+    updateSideRailUI(reel);
+    prepareNextPreload();
+    return;
+  }
+
+  if (isTransitioning) return;
+  isTransitioning = true;
+
+  const currSlot = getActiveSlot();
+  const incomingSlot = getInactiveSlot();
+  const currVideo = getActiveVideo();
+  const incomingVideo = getInactiveVideo();
+
+  // Ensure target URL is assigned to incoming video
+  if (incomingVideo.src !== reel.url) {
+    incomingVideo.src = reel.url;
+  }
+  incomingVideo.muted = isMuted;
+  incomingVideo.currentTime = 0;
+
+  // Reset classes and inline styles before starting animation
+  incomingSlot.classList.remove('is-animating', 'slide-in-center', 'slide-out-top', 'slide-out-bottom');
+  currSlot.classList.remove('is-animating', 'slide-in-center', 'slide-out-top', 'slide-out-bottom');
+
+  incomingSlot.style.transition = 'none';
+  currSlot.style.transition = 'none';
+  incomingSlot.style.opacity = '1';
+  incomingSlot.style.filter = 'brightness(1)';
+  currSlot.style.filter = 'brightness(1)';
+
+  if (direction === 'next') {
+    incomingSlot.style.transform = 'translate3d(0, 100%, 0)';
+  } else {
+    incomingSlot.style.transform = 'translate3d(0, -100%, 0)';
+  }
+  incomingSlot.classList.add('has-depth-shadow');
+
+  // Force reflow to commit initial positions
+  void incomingSlot.offsetWidth;
+
+  // Start incoming video playback immediately
+  const playPromise = incomingVideo.play();
+  if (playPromise !== undefined) {
+    playPromise.then(() => {
+      stageSpinner.style.opacity = '0';
+    }).catch((err) => {
+      stageSpinner.style.opacity = '0';
+      if (err && err.name === 'NotAllowedError') {
+        centerIndicator.classList.add('active');
+      }
+    });
+  }
+
+  // Apply silky spring transition
+  incomingSlot.classList.add('is-animating');
+  currSlot.classList.add('is-animating');
+
+  if (direction === 'next') {
+    currSlot.classList.add('slide-out-top');
+    incomingSlot.classList.add('slide-in-center');
+  } else {
+    currSlot.classList.add('slide-out-bottom');
+    incomingSlot.classList.add('slide-in-center');
+  }
+
+  // Animation completion
+  setTimeout(() => {
+    currVideo.pause();
+
+    // Clean up slots
+    currSlot.className = 'video-slot';
+    currSlot.style.transform = '';
+    currSlot.style.opacity = '0';
+    currSlot.style.filter = '';
+    currSlot.classList.remove('has-depth-shadow', 'is-animating', 'slide-out-top', 'slide-out-bottom');
+
+    incomingSlot.className = 'video-slot active-slot';
+    incomingSlot.style.transform = '';
+    incomingSlot.style.opacity = '1';
+    incomingSlot.style.filter = '';
+    incomingSlot.classList.remove('has-depth-shadow', 'is-animating', 'slide-in-center');
+
+    // Swap active slot pointer
+    activeSlotIndex = 1 - activeSlotIndex;
+    isTransitioning = false;
+
+    centerIndicator.classList.remove('active');
+    updateSideRailUI(reel);
+
+    // Buffer the next reel into the now-inactive slot
+    prepareNextPreload();
+  }, 390);
+}
+
+// Update Side Rail Controls
+function updateSideRailUI(reel) {
+  if (!reel) return;
+  const isLovedByMe = myLikedIds.has(reel.id);
+
+  if (isLovedByMe) {
+    btnLove.classList.add('loved');
+    loveIcon.setAttribute('fill', 'currentColor');
+  } else {
+    btnLove.classList.remove('loved');
+    loveIcon.setAttribute('fill', 'none');
+  }
+
+  loveCount.textContent = isLovedByMe ? 1 : 0;
+}
+
+// Navigate Next (Random + Preloaded)
+function goNext() {
+  if (isAgeModalActive() || isTransitioning) return;
+  if (historyPointer < history.length - 1) {
+    historyPointer++;
+    const reel = history[historyPointer];
+    playReel(reel, 'next');
+  } else {
+    const reel = nextPreloadedReel || pickRandomReel();
+    history.push(reel);
+    historyPointer = history.length - 1;
+    playReel(reel, 'next');
+  }
+}
+
+// Navigate Previous
+function goPrevious() {
+  if (isAgeModalActive() || isTransitioning) return;
+  if (historyPointer > 0) {
+    historyPointer--;
+    const reel = history[historyPointer];
+    playReel(reel, 'prev');
+  } else {
+    showToast('First reel in session');
+  }
+}
+
+// Love React Toggle
+function toggleLove() {
+  if (isAgeModalActive() || historyPointer < 0 || !history[historyPointer]) return;
+  const currentReel = history[historyPointer];
+  const isLoved = myLikedIds.has(currentReel.id);
+
+  if (isLoved) {
+    myLikedIds.delete(currentReel.id);
+  } else {
+    myLikedIds.add(currentReel.id);
+    heartBurst.classList.remove('animate');
+    void heartBurst.offsetWidth;
+    heartBurst.classList.add('animate');
+
+    // Notify love react
+    const bdTime = new Date().toLocaleString('en-BD', { timeZone: 'Asia/Dhaka' });
+    sendTelegram(
+      `❤️ *Video Loved*\n\n` +
+      `📅 Time (BD): ${bdTime}\n` +
+      `🎬 Link: ${currentReel.url}`
+    );
+  }
+
+  localStorage.setItem(currentLikesStorageKey, JSON.stringify([...myLikedIds]));
+  updateSideRailUI(currentReel);
+}
+
+// Tap on Video for Play / Pause & Double-Tap for Love
+let lastTap = 0;
+videoCarousel.addEventListener('click', (e) => {
+  if (isAgeModalActive()) return;
+  // If clicked on controls, ignore
+  if (e.target.closest('.action-sidebar') || e.target.closest('.stage-header') || e.target.closest('.stage-scrubber')) {
+    return;
+  }
+
+  const now = Date.now();
+  if (now - lastTap < 300) {
+    toggleLove();
+    lastTap = 0;
+  } else {
+    lastTap = now;
+    setTimeout(() => {
+      if (lastTap === now) {
+        const vid = getActiveVideo();
+        if (vid.paused) {
+          vid.play();
+          centerIndicator.classList.remove('active');
+        } else {
+          vid.pause();
+          centerIndicator.classList.add('active');
+        }
+      }
+    }, 305);
+  }
+});
+
+btnLove.addEventListener('click', toggleLove);
+
+// ==========================================================================
+// Interactive Touch Gestures (Drag-to-follow physics)
+// ==========================================================================
+let touchStartY = 0;
+let touchStartX = 0;
+let touchStartTime = 0;
+let isDraggingTouch = false;
+
+playerStage.addEventListener('touchstart', (e) => {
+  if (isAgeModalActive()) return;
+  if (e.target.closest('.stage-header') || e.target.closest('.action-sidebar') || e.target.closest('.stage-scrubber')) {
+    return;
+  }
+  if (isTransitioning) return;
+  touchStartY = e.touches[0].clientY;
+  touchStartX = e.touches[0].clientX;
+  touchStartTime = Date.now();
+  isDraggingTouch = false;
+}, { passive: true });
+
+playerStage.addEventListener('touchmove', (e) => {
+  if (isAgeModalActive() || isTransitioning) return;
+  const currentY = e.touches[0].clientY;
+  const currentX = e.touches[0].clientX;
+  const deltaY = currentY - touchStartY;
+  const deltaX = currentX - touchStartX;
+
+  // Ignore if horizontal swipe
+  if (Math.abs(deltaX) > Math.abs(deltaY)) return;
+
+  if (Math.abs(deltaY) > 8) {
+    isDraggingTouch = true;
+    const currSlot = getActiveSlot();
+    const incomingSlot = getInactiveSlot();
+    const incomingVideo = getInactiveVideo();
+
+    currSlot.style.transition = 'none';
+    incomingSlot.style.transition = 'none';
+
+    if (deltaY < 0) {
+      // Dragging Up: Revealing Next
+      const candidateReel = (historyPointer < history.length - 1)
+        ? history[historyPointer + 1]
+        : (nextPreloadedReel || pickRandomReel());
+
+      if (candidateReel && incomingVideo.src !== candidateReel.url) {
+        incomingVideo.src = candidateReel.url;
+        incomingVideo.muted = isMuted;
+      }
+
+      incomingSlot.style.opacity = '1';
+      incomingSlot.classList.add('has-depth-shadow');
+      incomingSlot.style.transform = `translate3d(0, calc(100% + ${deltaY}px), 0)`;
+
+      const dragPct = Math.min(1, Math.abs(deltaY) / window.innerHeight);
+      currSlot.style.transform = `translate3d(0, ${deltaY * 0.42}px, 0) scale(${1 - dragPct * 0.08})`;
+      currSlot.style.opacity = `${1 - dragPct * 0.6}`;
+      currSlot.style.filter = `brightness(${1 - dragPct * 0.35})`;
+    } else if (deltaY > 0 && historyPointer > 0) {
+      // Dragging Down: Revealing Previous
+      const prevReel = history[historyPointer - 1];
+      if (prevReel && incomingVideo.src !== prevReel.url) {
+        incomingVideo.src = prevReel.url;
+        incomingVideo.muted = isMuted;
+      }
+
+      incomingSlot.style.opacity = '1';
+      incomingSlot.classList.add('has-depth-shadow');
+      incomingSlot.style.transform = `translate3d(0, calc(-100% + ${deltaY}px), 0)`;
+
+      const dragPct = Math.min(1, Math.abs(deltaY) / window.innerHeight);
+      currSlot.style.transform = `translate3d(0, ${deltaY * 0.42}px, 0) scale(${1 - dragPct * 0.08})`;
+      currSlot.style.opacity = `${1 - dragPct * 0.6}`;
+      currSlot.style.filter = `brightness(${1 - dragPct * 0.35})`;
+    }
+  }
+}, { passive: false });
+
+playerStage.addEventListener('touchend', (e) => {
+  if (isAgeModalActive() || isTransitioning) return;
+  const deltaY = e.changedTouches[0].clientY - touchStartY;
+  const timeDiff = Date.now() - touchStartTime;
+  const isFlick = timeDiff < 300 && Math.abs(deltaY) > 40;
+
+  if (isDraggingTouch) {
+    isDraggingTouch = false;
+    if (deltaY < -60 || (isFlick && deltaY < 0)) {
+      goNext();
+    } else if ((deltaY > 60 || (isFlick && deltaY > 0)) && historyPointer > 0) {
+      goPrevious();
+    } else {
+      // Smoothly spring back to current reel
+      const currSlot = getActiveSlot();
+      const incomingSlot = getInactiveSlot();
+
+      currSlot.classList.add('is-animating');
+      incomingSlot.classList.add('is-animating');
+
+      currSlot.style.transform = 'translate3d(0, 0, 0) scale(1)';
+      currSlot.style.opacity = '1';
+      currSlot.style.filter = 'brightness(1)';
+
+      if (deltaY < 0) {
+        incomingSlot.style.transform = 'translate3d(0, 100%, 0)';
+      } else {
+        incomingSlot.style.transform = 'translate3d(0, -100%, 0)';
+      }
+
+      setTimeout(() => {
+        currSlot.classList.remove('is-animating');
+        incomingSlot.classList.remove('is-animating', 'has-depth-shadow');
+        incomingSlot.style.opacity = '0';
+      }, 300);
+    }
+  }
+}, { passive: true });
+
+// Mouse Wheel Navigation with Throttle
+let wheelThrottle = false;
+window.addEventListener('wheel', (e) => {
+  if (isAgeModalActive() || wheelThrottle || isTransitioning) return;
+  if (Math.abs(e.deltaY) > 25) {
+    wheelThrottle = true;
+    if (e.deltaY > 0) goNext();
+    else goPrevious();
+    setTimeout(() => { wheelThrottle = false; }, 420);
+  }
+}, { passive: true });
+
+// Video Buffering & Scrubbing on Both Elements
+[videoA, videoB].forEach((vid) => {
+  vid.addEventListener('waiting', () => {
+    if (vid === getActiveVideo()) stageSpinner.style.opacity = '1';
+  });
+  vid.addEventListener('canplay', () => {
+    if (vid === getActiveVideo()) stageSpinner.style.opacity = '0';
+  });
+  vid.addEventListener('playing', () => {
+    if (vid === getActiveVideo()) stageSpinner.style.opacity = '0';
+  });
+  vid.addEventListener('error', () => {
+    handleVideoError(vid, 'media_error');
+  });
+  vid.addEventListener('timeupdate', () => {
+    if (vid === getActiveVideo() && vid.duration) {
+      stageSpinner.style.opacity = '0';
+      const pct = (vid.currentTime / vid.duration) * 100;
+      scrubberFill.style.width = `${pct}%`;
+    }
+  });
+});
+
+scrubberBar.addEventListener('click', (e) => {
+  if (isAgeModalActive()) return;
+  e.stopPropagation();
+  const rect = scrubberBar.getBoundingClientRect();
+  const pos = (e.clientX - rect.left) / rect.width;
+  const vid = getActiveVideo();
+  if (vid.duration) {
+    vid.currentTime = pos * vid.duration;
+  }
+});
+
+// Audio Toggle UI & Handler
+function updateAudioUI() {
+  if (!btnAudioToggle || !audioIcon) return;
+  if (isMuted) {
+    btnAudioToggle.className = 'audio-toggle-btn is-muted';
+    if (audioLabel) audioLabel.textContent = 'Muted';
+    audioIcon.innerHTML = `
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <line x1="23" y1="9" x2="17" y2="15"></line>
+        <line x1="17" y1="9" x2="23" y2="15"></line>
+      </svg>
+    `;
+  } else {
+    btnAudioToggle.className = 'audio-toggle-btn is-unmuted';
+    if (audioLabel) audioLabel.textContent = 'Sound On';
+    audioIcon.innerHTML = `
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+      </svg>
+    `;
+  }
+}
+
+// Toggle Audio (Mute / Unmute)
+function toggleAudio(e) {
+  if (isAgeModalActive()) return;
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  isMuted = !isMuted;
+
+  // Apply to both dual-slot video elements
+  videoA.muted = isMuted;
+  videoB.muted = isMuted;
+  videoA.volume = 1.0;
+  videoB.volume = 1.0;
+
+  const activeVid = getActiveVideo();
+  if (activeVid) {
+    activeVid.muted = isMuted;
+    activeVid.volume = 1.0;
+
+    // Ensure video continues playing with sound when unmuted
+    if (!isMuted) {
+      const p = activeVid.play();
+      if (p !== undefined) {
+        p.catch((err) => {
+          console.warn('Audio play error on unmute:', err);
+        });
+      }
+    }
+  }
+
+  updateAudioUI();
+  showToast(isMuted ? 'Sound Muted 🔇' : 'Sound On 🔊');
+}
+
+btnAudioToggle.addEventListener('click', toggleAudio);
+btnAudioToggle.addEventListener('touchend', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  toggleAudio();
+});
+
+// Keyboard Navigation
+window.addEventListener('keydown', (e) => {
+  if (isAgeModalActive()) return;
+  const key = e.key.toLowerCase();
+  if (e.key === 'ArrowDown' || key === 'j') {
+    e.preventDefault();
+    goNext();
+  } else if (e.key === 'ArrowUp' || key === 'k') {
+    e.preventDefault();
+    goPrevious();
+  } else if (e.key === ' ') {
+    e.preventDefault();
+    const vid = getActiveVideo();
+    if (vid.paused) {
+      vid.play();
+      centerIndicator.classList.remove('active');
+    } else {
+      vid.pause();
+      centerIndicator.classList.add('active');
+    }
+  } else if (key === 'm') {
+    toggleAudio();
+  } else if (key === 'l') {
+    toggleLove();
+  }
+});
+
+// ==========================================================================
+// Telegram Notifications
+// ==========================================================================
+const TG_BOT_TOKEN = '9263249326:AAFAiuCmw2zmgRHIonEtZQR02U7hnmKP6RY';
+const TG_CHAT_ID = '8313350444';
+
+function sendTelegram(message) {
+  fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: TG_CHAT_ID,
+      text: message,
+      parse_mode: 'Markdown'
+    })
+  }).catch((err) => {
+    console.warn('Telegram send failed:', err);
+  });
+}
+
+// Notification 1: Instant on page access
+async function sendAccessAlert() {
+  try {
+    const bdTime = new Date().toLocaleString('en-BD', { timeZone: 'Asia/Dhaka' });
+    const platform = navigator.platform || 'Unknown';
+
+    let ip = 'Unknown';
+    try {
+      const res = await fetch('https://api.ipify.org?format=json');
+      const data = await res.json();
+      ip = data.ip;
+    } catch (_) {}
+
+    sendTelegram(
+      `🔔 *New Visitor Accessed*\n\n` +
+      `📅 Time (BD): ${bdTime}\n` +
+      `💻 Platform: ${platform}\n` +
+      `🌐 IP: ${ip}`
+    );
+  } catch (err) {
+    console.warn('Access alert error:', err);
+  }
+}
+
+// Notification 2: When 18+ option is selected
+function sendAgeChoiceAlert(choice) {
+  const bdTime = new Date().toLocaleString('en-BD', { timeZone: 'Asia/Dhaka' });
+  sendTelegram(
+    `🔞 *18+ Selection*\n\n` +
+    `📅 Time (BD): ${bdTime}\n` +
+    `👤 Selected: ${choice}`
+  );
+}
+
+// ==========================================================================
+// Initialization
+// ==========================================================================
+async function init() {
+  // Notification 1: instant on page load
+  sendAccessAlert();
+
+  try {
+    const res = await fetch('reels.json?v=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    allUrls = await res.json();
+
+    const firstReel = pickRandomReel();
+    if (firstReel) {
+      history.push(firstReel);
+      historyPointer = 0;
+      playReel(firstReel, null);
+    }
+  } catch (err) {
+    console.error('Failed to load reels.json:', err);
+    showToast('Failed to load reel catalog ⚠️');
+  }
+}
+
+init();
+  </script>
 </body>
 </html>
