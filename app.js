@@ -40,6 +40,7 @@ const loveCount = document.getElementById('loveCount');
 const scrubberBar = document.getElementById('scrubberBar');
 const scrubberFill = document.getElementById('scrubberFill');
 const toastPopup = document.getElementById('toastPopup');
+const scrollHint = document.getElementById('scrollHint');
 
 // Dual-Slot State: 0 -> slotA is active, 1 -> slotB is active
 let activeSlotIndex = 0;
@@ -72,6 +73,9 @@ function dismissAgeWarning() {
     ageWarningModal.style.display = 'none';
   }, 320);
 
+  // Show scroll instruction hint
+  showScrollHint();
+
   // User interaction: start or resume active video playback
   const activeVid = getActiveVideo();
   if (activeVid) {
@@ -99,6 +103,16 @@ if (btnAgeNo) {
     sendAgeChoiceAlert('No ❌');
     dismissAgeWarning();
   });
+}
+
+// Scroll Instruction Hint
+function showScrollHint() {
+  if (!scrollHint) return;
+  scrollHint.classList.add('visible');
+  setTimeout(() => {
+    scrollHint.classList.add('fade-out');
+    scrollHint.classList.remove('visible');
+  }, 4000);
 }
 
 // Toast Notification
