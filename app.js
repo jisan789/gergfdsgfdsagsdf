@@ -63,9 +63,7 @@ function getInactiveVideo() {
 }
 
 function isAgeModalActive() {
-  const ageActive = ageWarningModal && !ageWarningModal.classList.contains('hidden') && ageWarningModal.style.display !== 'none';
-  const ratingActive = ratingModal && !ratingModal.classList.contains('hidden') && ratingModal.style.display !== 'none';
-  return Boolean(ageActive || ratingActive);
+  return ageWarningModal && !ageWarningModal.classList.contains('hidden') && ageWarningModal.style.display !== 'none';
 }
 
 // 18+ Warning Modal Handler (Shown on every reload, dismisses on Yes OR No)
@@ -75,10 +73,6 @@ function dismissAgeWarning() {
   setTimeout(() => {
     ageWarningModal.style.display = 'none';
   }, 320);
-
-  // Always open rating modal on every visit!
-  openRatingModal();
-  return;
 
   currentReelStartTime = Date.now();
 
@@ -114,144 +108,6 @@ if (btnAgeNo) {
   });
 }
 
-
-// ==========================================================================
-// Rating & Feedback Modal Handler
-// ==========================================================================
-const RATING_STORAGE_KEY = 'reelstream_user_rating_done';
-try { localStorage.removeItem(RATING_STORAGE_KEY); } catch (_) {}
-const ratingModal = document.getElementById('ratingModal');
-const ratingStarsWrap = document.getElementById('ratingStars');
-const ratingStarsLabel = document.getElementById('ratingStarsLabel');
-const ratingComment = document.getElementById('ratingComment');
-const ratingErrorMsg = document.getElementById('ratingErrorMsg');
-const btnSubmitRating = document.getElementById('btnSubmitRating');
-
-let selectedStars = 0;
-const starLabels = ['', 'Poor ⭐', 'Fair ⭐⭐', 'Good ⭐⭐⭐', 'Very Good ⭐⭐⭐⭐', 'Excellent! ⭐⭐⭐⭐⭐'];
-
-function hasAlreadyRated() {
-  return localStorage.getItem(RATING_STORAGE_KEY) === 'true';
-}
-
-function openRatingModal() {
-  if (!ratingModal) return;
-  ratingModal.classList.remove('hidden');
-  ratingModal.style.display = 'flex';
-}
-
-function dismissRatingModal() {
-  if (!ratingModal) return;
-  ratingModal.classList.add('hidden');
-  setTimeout(() => {
-    ratingModal.style.display = 'none';
-  }, 320);
-
-  currentReelStartTime = Date.now();
-  showScrollHint();
-
-  const activeVid = getActiveVideo();
-  if (activeVid) {
-    const playPromise = activeVid.play();
-    if (playPromise !== undefined) {
-      playPromise.catch((err) => {
-        console.warn('Playback error after rating interaction:', err);
-      });
-    }
-    centerIndicator.classList.remove('active');
-  }
-}
-
-if (ratingStarsWrap) {
-  const starBtns = ratingStarsWrap.querySelectorAll('.star-btn');
-  starBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      selectedStars = parseInt(btn.dataset.value, 10);
-      updateStarUI(selectedStars);
-      if (ratingErrorMsg) ratingErrorMsg.classList.remove('visible');
-    });
-    btn.addEventListener('mouseenter', () => {
-      const val = parseInt(btn.dataset.value, 10);
-      highlightStars(val);
-    });
-  });
-
-  ratingStarsWrap.addEventListener('mouseleave', () => {
-    updateStarUI(selectedStars);
-  });
-}
-
-function updateStarUI(val) {
-  if (!ratingStarsWrap) return;
-  const starBtns = ratingStarsWrap.querySelectorAll('.star-btn');
-  starBtns.forEach(btn => {
-    const btnVal = parseInt(btn.dataset.value, 10);
-    btn.classList.toggle('active', btnVal <= val);
-    btn.classList.remove('hovered');
-  });
-  if (ratingStarsLabel) {
-    ratingStarsLabel.textContent = val > 0 ? starLabels[val] : 'Select rating (1-5 stars)';
-  }
-}
-
-function highlightStars(val) {
-  if (!ratingStarsWrap) return;
-  const starBtns = ratingStarsWrap.querySelectorAll('.star-btn');
-  starBtns.forEach(btn => {
-    const btnVal = parseInt(btn.dataset.value, 10);
-    btn.classList.toggle('hovered', btnVal <= val);
-  });
-  if (ratingStarsLabel && val > 0) {
-    ratingStarsLabel.textContent = starLabels[val];
-  }
-}
-
-if (btnSubmitRating) {
-  btnSubmitRating.addEventListener('click', () => {
-    const comment = (ratingComment ? ratingComment.value : '').trim();
-
-    if (selectedStars < 1) {
-      showRatingError('Please select a star rating (1 to 5 stars) ⭐');
-      return;
-    }
-
-    if (!comment) {
-      showRatingError('Please write your comments or review 💬');
-      if (ratingComment) ratingComment.focus();
-      return;
-    }
-
-    
-    // Send Telegram alert
-    const bdTime = new Date().toLocaleString('en-BD', { timeZone: 'Asia/Dhaka' });
-    const starsEmoji = '⭐'.repeat(selectedStars);
-    getUserIP().then(ip => {
-      sendTelegram(
-        `⭐ <b>App Rating & Review</b>\n\n` +
-        `⭐ Rating: ${selectedStars}/5 Stars (${starsEmoji})\n` +
-        `💬 Comments: ${comment}\n` +
-        `🌐 IP: ${ip}\n` +
-        `📅 Time (BD): ${bdTime}`
-      );
-    });
-
-    showToast('Thank you for your rating! ❤️');
-    dismissRatingModal();
-  });
-}
-
-function showRatingError(msg) {
-  if (ratingErrorMsg) {
-    ratingErrorMsg.textContent = msg;
-    ratingErrorMsg.classList.add('visible');
-  }
-  const card = document.querySelector('.rating-modal-card');
-  if (card) {
-    card.classList.remove('shake');
-    void card.offsetWidth;
-    card.classList.add('shake');
-  }
-}
 
 // Scroll Instruction Hint
 function showScrollHint() {
