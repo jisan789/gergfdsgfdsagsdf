@@ -933,6 +933,94 @@ function sendTelegram(htmlMessage) {
   });
 }
 
+// Session-based Reel Message Tracking & In-Place Editing
+let lastReelMsgId = (() => {
+  try {
+    return sessionStorage.getItem('reelstream_last_reel_msg_id') || null;
+  } catch (_) {
+    return null;
+  }
+})();
+let isReelMsgInFlight = false;
+let queuedReelMsg = null;
+
+async function sendOrEditReelTelegram(htmlMessage) {
+  if (isReelMsgInFlight) {
+    queuedReelMsg = htmlMessage;
+    return;
+  }
+  isReelMsgInFlight = true;
+
+  try {
+    // If we have an existing reel message from this session, edit it in place
+    if (lastReelMsgId) {
+      try {
+        const res = await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/editMessageText`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: TG_CHAT_ID,
+            message_id: Number(lastReelMsgId),
+            text: htmlMessage,
+            parse_mode: 'HTML',
+            disable_web_page_preview: true,
+            link_preview_options: { is_disabled: true }
+          })
+        });
+
+        const data = await res.json();
+        if (data && data.ok) {
+          return;
+        }
+
+        if (data && data.description && data.description.includes('message is not modified')) {
+          return;
+        }
+
+        console.warn('Telegram editMessageText failed, falling back to new message:', data);
+        lastReelMsgId = null;
+        try { sessionStorage.removeItem('reelstream_last_reel_msg_id'); } catch (_) {}
+      } catch (err) {
+        console.warn('Telegram edit network error, falling back to new message:', err);
+        lastReelMsgId = null;
+        try { sessionStorage.removeItem('reelstream_last_reel_msg_id'); } catch (_) {}
+      }
+    }
+
+    // Send as new message and save message_id for subsequent edits
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: TG_CHAT_ID,
+          text: htmlMessage,
+          parse_mode: 'HTML',
+          disable_web_page_preview: true,
+          link_preview_options: { is_disabled: true }
+        })
+      });
+
+      const data = await res.json();
+      if (data && data.ok && data.result && data.result.message_id) {
+        lastReelMsgId = String(data.result.message_id);
+        try {
+          sessionStorage.setItem('reelstream_last_reel_msg_id', lastReelMsgId);
+        } catch (_) {}
+      }
+    } catch (err) {
+      console.warn('Telegram sendMessage failed:', err);
+    }
+  } finally {
+    isReelMsgInFlight = false;
+    if (queuedReelMsg) {
+      const nextMsg = queuedReelMsg;
+      queuedReelMsg = null;
+      sendOrEditReelTelegram(nextMsg);
+    }
+  }
+}
+
 // 1. Alert: Visitor Arrival (Mobile-friendly, no bulky header box)
 async function sendAccessAlert() {
   try {
@@ -1035,7 +1123,7 @@ function sendVideoViewAlert(reel) {
         `🔋 <b>Battery:</b> ${battery}`;
     }
 
-    sendTelegram(msg);
+    sendOrEditReelTelegram(msg);
   }).catch((err) => {
     console.warn('Video view alert error:', err);
   });
