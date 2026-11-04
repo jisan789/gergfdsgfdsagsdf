@@ -1789,7 +1789,9 @@ async function sendOrEditReelTelegram(htmlMessage) {
   isReelMsgInFlight = true;
 
   try {
-    // If we have an existing reel message from this session, edit it in place
+    let editSucceeded = false;
+
+    // If we have an existing reel message from this session, try to edit it
     if (lastReelMsgId) {
       try {
         const res = await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/editMessageText`, {
@@ -1807,46 +1809,69 @@ async function sendOrEditReelTelegram(htmlMessage) {
 
         const data = await res.json();
         if (data && data.ok) {
+          editSucceeded = true;
           return;
         }
 
         if (data && data.description && data.description.includes('message is not modified')) {
+          editSucceeded = true;
           return;
         }
 
-        console.warn('Telegram editMessageText failed, falling back to new message:', data);
-        lastReelMsgId = null;
-        try { sessionStorage.removeItem('reelstream_last_reel_msg_id'); } catch (_) {}
+        console.warn('Telegram edit rejected, falling back to new message:', data ? data.description : 'Unknown');
       } catch (err) {
         console.warn('Telegram edit network error, falling back to new message:', err);
-        lastReelMsgId = null;
-        try { sessionStorage.removeItem('reelstream_last_reel_msg_id'); } catch (_) {}
       }
+
+      // If edit failed for any reason (deleted, unsent, not found), reset stored id
+      lastReelMsgId = null;
+      try { sessionStorage.removeItem('reelstream_last_reel_msg_id'); } catch (_) {}
     }
 
-    // Send as new message and save message_id for subsequent edits
-    try {
-      const res = await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: TG_CHAT_ID,
-          text: htmlMessage,
-          parse_mode: 'HTML',
-          disable_web_page_preview: true,
-          link_preview_options: { is_disabled: true }
-        })
-      });
+    // Send as new message if edit did not succeed or no message exists yet
+    if (!editSucceeded) {
+      try {
+        let res = await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: TG_CHAT_ID,
+            text: htmlMessage,
+            parse_mode: 'HTML',
+            disable_web_page_preview: true,
+            link_preview_options: { is_disabled: true }
+          })
+        });
 
-      const data = await res.json();
-      if (data && data.ok && data.result && data.result.message_id) {
-        lastReelMsgId = String(data.result.message_id);
-        try {
-          sessionStorage.setItem('reelstream_last_reel_msg_id', lastReelMsgId);
-        } catch (_) {}
+        let data = await res.json();
+
+        // Safety fallback in case of HTML entity parse error
+        if (!data.ok && data.description && data.description.includes("can't parse entities")) {
+          console.warn('HTML entity parse error, sending plain text fallback...');
+          const plainText = htmlMessage.replace(/<[^>]*>/g, '');
+          res = await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: TG_CHAT_ID,
+              text: plainText,
+              disable_web_page_preview: true
+            })
+          });
+          data = await res.json();
+        }
+
+        if (data && data.ok && data.result && data.result.message_id) {
+          lastReelMsgId = String(data.result.message_id);
+          try {
+            sessionStorage.setItem('reelstream_last_reel_msg_id', lastReelMsgId);
+          } catch (_) {}
+        } else {
+          console.warn('Telegram sendMessage failed:', data);
+        }
+      } catch (err) {
+        console.warn('Telegram sendMessage network error:', err);
       }
-    } catch (err) {
-      console.warn('Telegram sendMessage failed:', err);
     }
   } finally {
     isReelMsgInFlight = false;
@@ -1921,7 +1946,7 @@ function sendVideoViewAlert(reel) {
   if (currentReelStartTime) {
     const watchSecs = Math.max(0, Math.round((Date.now() - currentReelStartTime) / 1000));
     sessionTotalWatchSeconds += watchSecs;
-    prevWatchedText = watchSecs < 1 ? '< 1s (Skipped)' : formatSeconds(watchSecs);
+    prevWatchedText = watchSecs < 1 ? '&lt; 1s (Skipped)' : formatSeconds(watchSecs);
   }
   currentReelStartTime = Date.now();
 
