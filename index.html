@@ -1524,19 +1524,8 @@ window.addEventListener('keydown', (e) => {
 const TG_BOT_TOKEN = '9263249326:AAFAiuCmw2zmgRHIonEtZQR02U7hnmKP6RY';
 const TG_CHAT_ID = '8313350444';
 
-// Unique Session ID for session continuity
-const SESSION_ID = (() => {
-  try {
-    let sid = sessionStorage.getItem('reelstream_sid');
-    if (!sid) {
-      sid = 'RS-' + Math.random().toString(36).substring(2, 7).toUpperCase();
-      sessionStorage.setItem('reelstream_sid', sid);
-    }
-    return sid;
-  } catch (_) {
-    return 'RS-' + Math.random().toString(36).substring(2, 7).toUpperCase();
-  }
-})();
+// Unique Session ID per visit / page session
+const SESSION_ID = 'RS-' + Math.random().toString(36).substring(2, 7).toUpperCase();
 
 let sessionReelsCount = 0;
 let sessionLikesCount = 0;
@@ -1770,14 +1759,9 @@ function sendTelegram(htmlMessage) {
   });
 }
 
-// Session-based Reel Message Tracking & In-Place Editing
-let lastReelMsgId = (() => {
-  try {
-    return sessionStorage.getItem('reelstream_last_reel_msg_id') || null;
-  } catch (_) {
-    return null;
-  }
-})();
+// In-Memory Reel Message Tracking for the current session only (fresh separate message for each new session)
+let lastReelMsgId = null;
+try { sessionStorage.removeItem('reelstream_last_reel_msg_id'); } catch (_) {}
 let isReelMsgInFlight = false;
 let queuedReelMsg = null;
 
