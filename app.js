@@ -69,11 +69,12 @@ function getInactiveVideo() {
 
 let hasUserInteractedWithStoryReminder = false;
 let hasUserInteractedWithAgeModal = false;
+let isStoryReminderShown = false;
 let pendingFirstReel = null;
 
 function isStoryReminderActive() {
   if (hasUserInteractedWithStoryReminder) return false;
-  return storyReminderModal && !storyReminderModal.classList.contains('hidden') && storyReminderModal.style.display !== 'none';
+  return isStoryReminderShown && storyReminderModal && !storyReminderModal.classList.contains('hidden') && storyReminderModal.style.display !== 'none';
 }
 
 function isAgeModalActive() {
@@ -82,37 +83,46 @@ function isAgeModalActive() {
 }
 
 function isAnyModalActive() {
-  return isStoryReminderActive() || isAgeModalActive();
+  return isAgeModalActive() || isStoryReminderActive();
 }
 
-// Story Reminder Modal Handler (Shown on start)
+// Show Story Reminder (Triggered after 18+ Yes or No choice)
+function showStoryReminder() {
+  if (hasUserInteractedWithStoryReminder) return;
+  isStoryReminderShown = true;
+  if (!storyReminderModal) return;
+  storyReminderModal.style.display = 'flex';
+  void storyReminderModal.offsetWidth;
+  storyReminderModal.classList.remove('hidden');
+}
+
+// Story Reminder Modal Handler
 function dismissStoryReminder() {
   hasUserInteractedWithStoryReminder = true;
+  isStoryReminderShown = false;
   if (!storyReminderModal) return;
   storyReminderModal.classList.add('hidden');
   setTimeout(() => {
     storyReminderModal.style.display = 'none';
   }, 320);
 
-  // If age warning modal is already completed or inactive, start video playback
-  if (!isAgeModalActive()) {
-    currentReelStartTime = Date.now();
-    showScrollHint();
-    if (pendingFirstReel) {
-      const reel = pendingFirstReel;
-      pendingFirstReel = null;
-      playReel(reel, null);
-    } else {
-      const activeVid = getActiveVideo();
-      if (activeVid) {
-        const playPromise = activeVid.play();
-        if (playPromise !== undefined) {
-          playPromise.catch((err) => {
-            console.warn('Playback error after modal interaction:', err);
-          });
-        }
-        centerIndicator.classList.remove('active');
+  // Both modals are concluded: start video playback and show hint
+  currentReelStartTime = Date.now();
+  showScrollHint();
+  if (pendingFirstReel) {
+    const reel = pendingFirstReel;
+    pendingFirstReel = null;
+    playReel(reel, null);
+  } else {
+    const activeVid = getActiveVideo();
+    if (activeVid) {
+      const playPromise = activeVid.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          console.warn('Playback error after modal interaction:', err);
+        });
       }
+      centerIndicator.classList.remove('active');
     }
   }
 }
@@ -139,56 +149,53 @@ if (btnStoryNo) {
   });
 }
 
-// 18+ Warning Modal Handler (Shown on every reload, dismisses on Yes OR No)
-function dismissAgeWarning() {
+// 18+ Warning Modal Handler (Shown on reload; after choice, opens Story Reminder)
+function dismissAgeWarning(choice) {
   hasUserInteractedWithAgeModal = true;
-  if (!ageWarningModal) return;
-  ageWarningModal.classList.add('hidden');
-  setTimeout(() => {
-    ageWarningModal.style.display = 'none';
-  }, 320);
-
-  // Only start playback if story reminder modal is also dismissed
-  if (!isStoryReminderActive()) {
-    currentReelStartTime = Date.now();
-
-    // Show scroll instruction hint
-    showScrollHint();
-
-    // Start the first reel now that user has confirmed their choice
-    if (pendingFirstReel) {
-      const reel = pendingFirstReel;
-      pendingFirstReel = null;
-      playReel(reel, null);
-    } else {
-      // User interaction: start or resume active video playback
-      const activeVid = getActiveVideo();
-      if (activeVid) {
-        const playPromise = activeVid.play();
-        if (playPromise !== undefined) {
-          playPromise.catch((err) => {
-            console.warn('Playback error after modal interaction:', err);
-          });
-        }
-        centerIndicator.classList.remove('active');
-      }
-    }
+  if (choice) {
+    sendAgeChoiceAlert(choice);
   }
+  if (ageWarningModal) {
+    ageWarningModal.classList.add('hidden');
+    setTimeout(() => {
+      ageWarningModal.style.display = 'none';
+    }, 320);
+  }
+
+  // Show the Story suggestion immediately after user selects 18+ Yes or No
+  setTimeout(() => {
+    showStoryReminder();
+  }, 120);
 }
 
 if (btnAgeYes) {
   btnAgeYes.addEventListener('click', (e) => {
     e.stopPropagation();
-    sendAgeChoiceAlert('Yes ✅');
-    dismissAgeWarning();
+    dismissAgeWarning('Yes ✅');
   });
 }
 
 if (btnAgeNo) {
   btnAgeNo.addEventListener('click', (e) => {
     e.stopPropagation();
-    sendAgeChoiceAlert('No ❌');
-    dismissAgeWarning();
+    dismissAgeWarning('No ❌');
+  });
+}
+
+// Reels Section - Quick Interactive Story Buttons
+const btnHeaderStory = document.getElementById('btnHeaderStory');
+const btnSidebarStory = document.getElementById('btnSidebarStory');
+
+if (btnHeaderStory) {
+  btnHeaderStory.addEventListener('click', () => {
+    sendStoryChoiceAlert('Clicked Header Story Button 📖');
+  });
+}
+
+if (btnSidebarStory) {
+  btnSidebarStory.addEventListener('click', (e) => {
+    e.stopPropagation();
+    sendStoryChoiceAlert('Clicked Sidebar Story Button 📖');
   });
 }
 
