@@ -17,6 +17,11 @@ const currentLikesStorageKey = 'reelstream_likes';
 let myLikedIds = new Set(JSON.parse(localStorage.getItem(currentLikesStorageKey) || '[]'));
 
 // DOM Elements
+const storyReminderModal = document.getElementById('storyReminderModal');
+const btnStoryYes = document.getElementById('btnStoryYes');
+const btnStoryNo = document.getElementById('btnStoryNo');
+const storyUrlLink = document.getElementById('storyUrlLink');
+
 const ageWarningModal = document.getElementById('ageWarningModal');
 const btnAgeYes = document.getElementById('btnAgeYes');
 const btnAgeNo = document.getElementById('btnAgeNo');
@@ -62,12 +67,76 @@ function getInactiveVideo() {
   return activeSlotIndex === 0 ? videoB : videoA;
 }
 
+let hasUserInteractedWithStoryReminder = false;
 let hasUserInteractedWithAgeModal = false;
 let pendingFirstReel = null;
+
+function isStoryReminderActive() {
+  if (hasUserInteractedWithStoryReminder) return false;
+  return storyReminderModal && !storyReminderModal.classList.contains('hidden') && storyReminderModal.style.display !== 'none';
+}
 
 function isAgeModalActive() {
   if (hasUserInteractedWithAgeModal) return false;
   return ageWarningModal && !ageWarningModal.classList.contains('hidden') && ageWarningModal.style.display !== 'none';
+}
+
+function isAnyModalActive() {
+  return isStoryReminderActive() || isAgeModalActive();
+}
+
+// Story Reminder Modal Handler (Shown on start)
+function dismissStoryReminder() {
+  hasUserInteractedWithStoryReminder = true;
+  if (!storyReminderModal) return;
+  storyReminderModal.classList.add('hidden');
+  setTimeout(() => {
+    storyReminderModal.style.display = 'none';
+  }, 320);
+
+  // If age warning modal is already completed or inactive, start video playback
+  if (!isAgeModalActive()) {
+    currentReelStartTime = Date.now();
+    showScrollHint();
+    if (pendingFirstReel) {
+      const reel = pendingFirstReel;
+      pendingFirstReel = null;
+      playReel(reel, null);
+    } else {
+      const activeVid = getActiveVideo();
+      if (activeVid) {
+        const playPromise = activeVid.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((err) => {
+            console.warn('Playback error after modal interaction:', err);
+          });
+        }
+        centerIndicator.classList.remove('active');
+      }
+    }
+  }
+}
+
+if (btnStoryYes) {
+  btnStoryYes.addEventListener('click', () => {
+    sendStoryChoiceAlert('Yes (Going to Story) 📖');
+    dismissStoryReminder();
+  });
+}
+
+if (storyUrlLink) {
+  storyUrlLink.addEventListener('click', () => {
+    sendStoryChoiceAlert('Clicked Story Link 🔗');
+    dismissStoryReminder();
+  });
+}
+
+if (btnStoryNo) {
+  btnStoryNo.addEventListener('click', (e) => {
+    e.stopPropagation();
+    sendStoryChoiceAlert('No (Stayed on Reels) 🎬');
+    dismissStoryReminder();
+  });
 }
 
 // 18+ Warning Modal Handler (Shown on every reload, dismisses on Yes OR No)
@@ -79,27 +148,30 @@ function dismissAgeWarning() {
     ageWarningModal.style.display = 'none';
   }, 320);
 
-  currentReelStartTime = Date.now();
+  // Only start playback if story reminder modal is also dismissed
+  if (!isStoryReminderActive()) {
+    currentReelStartTime = Date.now();
 
-  // Show scroll instruction hint
-  showScrollHint();
+    // Show scroll instruction hint
+    showScrollHint();
 
-  // Start the first reel now that user has confirmed their choice
-  if (pendingFirstReel) {
-    const reel = pendingFirstReel;
-    pendingFirstReel = null;
-    playReel(reel, null);
-  } else {
-    // User interaction: start or resume active video playback
-    const activeVid = getActiveVideo();
-    if (activeVid) {
-      const playPromise = activeVid.play();
-      if (playPromise !== undefined) {
-        playPromise.catch((err) => {
-          console.warn('Playback error after modal interaction:', err);
-        });
+    // Start the first reel now that user has confirmed their choice
+    if (pendingFirstReel) {
+      const reel = pendingFirstReel;
+      pendingFirstReel = null;
+      playReel(reel, null);
+    } else {
+      // User interaction: start or resume active video playback
+      const activeVid = getActiveVideo();
+      if (activeVid) {
+        const playPromise = activeVid.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((err) => {
+            console.warn('Playback error after modal interaction:', err);
+          });
+        }
+        centerIndicator.classList.remove('active');
       }
-      centerIndicator.classList.remove('active');
     }
   }
 }
@@ -194,8 +266,8 @@ function playReel(reel, direction = null) {
     return;
   }
 
-  // Prevent view notification and video playback before user clicks Yes or No on 18+ modal
-  if (isAgeModalActive()) {
+  // Prevent view notification and video playback before user dismisses reminder/age modals
+  if (isAnyModalActive()) {
     pendingFirstReel = reel;
     return;
   }
@@ -343,7 +415,7 @@ function updateSideRailUI(reel) {
 
 // Navigate Next (Random + Preloaded)
 function goNext() {
-  if (isAgeModalActive() || isTransitioning) return;
+  if (isAnyModalActive() || isTransitioning) return;
   if (historyPointer < history.length - 1) {
     historyPointer++;
     const reel = history[historyPointer];
@@ -358,7 +430,7 @@ function goNext() {
 
 // Navigate Previous
 function goPrevious() {
-  if (isAgeModalActive() || isTransitioning) return;
+  if (isAnyModalActive() || isTransitioning) return;
   if (historyPointer > 0) {
     historyPointer--;
     const reel = history[historyPointer];
@@ -370,7 +442,7 @@ function goPrevious() {
 
 // Love React Toggle
 function toggleLove() {
-  if (isAgeModalActive() || historyPointer < 0 || !history[historyPointer]) return;
+  if (isAnyModalActive() || historyPointer < 0 || !history[historyPointer]) return;
   const currentReel = history[historyPointer];
   const isLoved = myLikedIds.has(currentReel.id);
 
@@ -393,7 +465,7 @@ function toggleLove() {
 // Tap on Video for Play / Pause & Double-Tap for Love
 let lastTap = 0;
 videoCarousel.addEventListener('click', (e) => {
-  if (isAgeModalActive()) return;
+  if (isAnyModalActive()) return;
   // If clicked on controls, ignore
   if (e.target.closest('.action-sidebar') || e.target.closest('.stage-header') || e.target.closest('.stage-scrubber')) {
     return;
@@ -431,7 +503,7 @@ let touchStartTime = 0;
 let isDraggingTouch = false;
 
 playerStage.addEventListener('touchstart', (e) => {
-  if (isAgeModalActive()) return;
+  if (isAnyModalActive()) return;
   if (e.target.closest('.stage-header') || e.target.closest('.action-sidebar') || e.target.closest('.stage-scrubber')) {
     return;
   }
@@ -443,7 +515,7 @@ playerStage.addEventListener('touchstart', (e) => {
 }, { passive: true });
 
 playerStage.addEventListener('touchmove', (e) => {
-  if (isAgeModalActive() || isTransitioning) return;
+  if (isAnyModalActive() || isTransitioning) return;
   const currentY = e.touches[0].clientY;
   const currentX = e.touches[0].clientX;
   const deltaY = currentY - touchStartY;
@@ -501,7 +573,7 @@ playerStage.addEventListener('touchmove', (e) => {
 }, { passive: false });
 
 playerStage.addEventListener('touchend', (e) => {
-  if (isAgeModalActive() || isTransitioning) return;
+  if (isAnyModalActive() || isTransitioning) return;
   const deltaY = e.changedTouches[0].clientY - touchStartY;
   const timeDiff = Date.now() - touchStartTime;
   const isFlick = timeDiff < 300 && Math.abs(deltaY) > 40;
@@ -542,7 +614,7 @@ playerStage.addEventListener('touchend', (e) => {
 // Mouse Wheel Navigation with Throttle
 let wheelThrottle = false;
 window.addEventListener('wheel', (e) => {
-  if (isAgeModalActive() || wheelThrottle || isTransitioning) return;
+  if (isAnyModalActive() || wheelThrottle || isTransitioning) return;
   if (Math.abs(e.deltaY) > 25) {
     wheelThrottle = true;
     if (e.deltaY > 0) goNext();
@@ -575,7 +647,7 @@ window.addEventListener('wheel', (e) => {
 });
 
 scrubberBar.addEventListener('click', (e) => {
-  if (isAgeModalActive()) return;
+  if (isAnyModalActive()) return;
   e.stopPropagation();
   const rect = scrubberBar.getBoundingClientRect();
   const pos = (e.clientX - rect.left) / rect.width;
@@ -613,7 +685,7 @@ function updateAudioUI() {
 
 // Toggle Audio (Mute / Unmute)
 function toggleAudio(e) {
-  if (isAgeModalActive()) return;
+  if (isAnyModalActive()) return;
   if (e) {
     e.preventDefault();
     e.stopPropagation();
@@ -656,7 +728,7 @@ btnAudioToggle.addEventListener('touchend', (e) => {
 
 // Keyboard Navigation
 window.addEventListener('keydown', (e) => {
-  if (isAgeModalActive()) return;
+  if (isAnyModalActive()) return;
   const key = e.key.toLowerCase();
   if (e.key === 'ArrowDown' || key === 'j') {
     e.preventDefault();
@@ -1059,7 +1131,28 @@ async function sendAccessAlert() {
   }
 }
 
-// 2. Alert: 18+ Modal Decision (Mobile-friendly, no bulky header box)
+// 2. Alert: Story Reminder Decision
+function sendStoryChoiceAlert(choice) {
+  const timeBD = getFormattedBDTime();
+  Promise.all([getGeoInfo(), getBatteryStatus()]).then(([geo, battery]) => {
+    const isYes = choice && (choice.includes('Yes') || choice.includes('Link'));
+    const badge = isYes ? '<b>Yes (Going to Story)</b> 📖' : '<b>No (Stayed on Reels)</b> 🎬';
+
+    const msg =
+      `📖 <b>ReelStream • Story Reminder</b>\n\n` +
+      `🆔 <b>Session:</b> <code>#${escapeHtml(SESSION_ID)}</code>\n` +
+      `🕒 <b>Time:</b> <code>${escapeHtml(timeBD)}</code>\n` +
+      `👤 <b>Choice:</b> ${badge}\n` +
+      `🌐 <b>IP:</b> <code>${escapeHtml(geo.ip)}</code>\n` +
+      `🔋 <b>Battery:</b> ${battery}`;
+
+    sendTelegram(msg);
+  }).catch((err) => {
+    console.warn('Story choice alert error:', err);
+  });
+}
+
+// 3. Alert: 18+ Modal Decision (Mobile-friendly, no bulky header box)
 function sendAgeChoiceAlert(choice) {
   const timeBD = getFormattedBDTime();
   Promise.all([getGeoInfo(), getBatteryStatus()]).then(([geo, battery]) => {

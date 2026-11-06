@@ -541,6 +541,179 @@ html, body {
 }
 
 /* ==========================================================================
+   Story Reminder Modal (Shown on start)
+   ========================================================================== */
+.story-reminder-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(6, 7, 9, 0.92);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  z-index: 10002;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.32s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.story-reminder-overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.story-reminder-card {
+  max-width: 380px;
+  width: 100%;
+  background: rgba(18, 19, 26, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 24px;
+  padding: 32px 24px 26px;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.95), 0 0 35px rgba(59, 130, 246, 0.22);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  animation: reminderCardPop 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes reminderCardPop {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.story-reminder-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(147, 51, 234, 0.15));
+  border: 2px solid rgba(96, 165, 250, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  box-shadow: 0 0 26px rgba(59, 130, 246, 0.35);
+}
+
+.story-reminder-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+
+.story-reminder-question {
+  font-size: 1.05rem;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+.story-reminder-url-box {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0 6px;
+  box-sizing: border-box;
+}
+
+.story-url-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 600;
+}
+
+.story-url-link {
+  font-size: 0.92rem;
+  color: #60a5fa;
+  text-decoration: none;
+  font-weight: 600;
+  word-break: break-all;
+  transition: color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.story-url-link:hover {
+  color: #93c5fd;
+  text-decoration: underline;
+}
+
+.story-reminder-actions {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.story-btn {
+  flex: 1;
+  padding: 13px 18px;
+  border-radius: 14px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+  user-select: none;
+  box-sizing: border-box;
+}
+
+.story-btn-yes {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 18px rgba(37, 99, 235, 0.4);
+}
+
+.story-btn-yes:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 22px rgba(37, 99, 235, 0.55);
+  filter: brightness(1.1);
+}
+
+.story-btn-no {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.story-btn-no:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  transform: translateY(-2px);
+}
+
+.story-btn:active {
+  transform: translateY(0);
+}
+
+/* ==========================================================================
    18+ Age Warning Modal (Shown on every reload)
    ========================================================================== */
 .age-warning-overlay {
@@ -728,6 +901,37 @@ html, body {
   </style>
 </head>
 <body>
+  <!-- Story Reminder Modal (Appears on start) -->
+  <div class="story-reminder-overlay" id="storyReminderModal">
+    <div class="story-reminder-card">
+      <div class="story-reminder-icon">📖</div>
+      <h2 class="story-reminder-title">Reminder</h2>
+      <p class="story-reminder-question">Do you want to ready story?</p>
+      
+      <div class="story-reminder-url-box">
+        <span class="story-url-label">Story Website Link</span>
+        <a href="https://sstory-beige.vercel.app/" target="_blank" rel="noopener noreferrer" class="story-url-link" id="storyUrlLink">
+          <span>https://sstory-beige.vercel.app/</span>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+        </a>
+      </div>
+
+      <div class="story-reminder-actions">
+        <a href="https://sstory-beige.vercel.app/" target="_blank" rel="noopener noreferrer" class="story-btn story-btn-yes" id="btnStoryYes">
+          <span>Yes, Read Story</span>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </a>
+        <button type="button" class="story-btn story-btn-no" id="btnStoryNo">No, Stay Here</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 18+ Age Warning Modal (Appears on every reload) -->
   <div class="age-warning-overlay" id="ageWarningModal">
     <div class="age-warning-card">
@@ -738,6 +942,7 @@ html, body {
         <button type="button" class="age-btn age-btn-yes" id="btnAgeYes">Yes</button>
         <button type="button" class="age-btn age-btn-no" id="btnAgeNo">No</button>
       </div>
+      <a href="https://sstory-beige.vercel.app/" target="_blank" rel="noopener noreferrer" style="font-size: 0.82rem; color: rgba(255, 255, 255, 0.6); text-decoration: underline; margin-top: 4px;">Looking to read story? Click here</a>
     </div>
   </div>
 
@@ -854,6 +1059,11 @@ const currentLikesStorageKey = 'reelstream_likes';
 let myLikedIds = new Set(JSON.parse(localStorage.getItem(currentLikesStorageKey) || '[]'));
 
 // DOM Elements
+const storyReminderModal = document.getElementById('storyReminderModal');
+const btnStoryYes = document.getElementById('btnStoryYes');
+const btnStoryNo = document.getElementById('btnStoryNo');
+const storyUrlLink = document.getElementById('storyUrlLink');
+
 const ageWarningModal = document.getElementById('ageWarningModal');
 const btnAgeYes = document.getElementById('btnAgeYes');
 const btnAgeNo = document.getElementById('btnAgeNo');
@@ -899,12 +1109,76 @@ function getInactiveVideo() {
   return activeSlotIndex === 0 ? videoB : videoA;
 }
 
+let hasUserInteractedWithStoryReminder = false;
 let hasUserInteractedWithAgeModal = false;
 let pendingFirstReel = null;
+
+function isStoryReminderActive() {
+  if (hasUserInteractedWithStoryReminder) return false;
+  return storyReminderModal && !storyReminderModal.classList.contains('hidden') && storyReminderModal.style.display !== 'none';
+}
 
 function isAgeModalActive() {
   if (hasUserInteractedWithAgeModal) return false;
   return ageWarningModal && !ageWarningModal.classList.contains('hidden') && ageWarningModal.style.display !== 'none';
+}
+
+function isAnyModalActive() {
+  return isStoryReminderActive() || isAgeModalActive();
+}
+
+// Story Reminder Modal Handler (Shown on start)
+function dismissStoryReminder() {
+  hasUserInteractedWithStoryReminder = true;
+  if (!storyReminderModal) return;
+  storyReminderModal.classList.add('hidden');
+  setTimeout(() => {
+    storyReminderModal.style.display = 'none';
+  }, 320);
+
+  // If age warning modal is already completed or inactive, start video playback
+  if (!isAgeModalActive()) {
+    currentReelStartTime = Date.now();
+    showScrollHint();
+    if (pendingFirstReel) {
+      const reel = pendingFirstReel;
+      pendingFirstReel = null;
+      playReel(reel, null);
+    } else {
+      const activeVid = getActiveVideo();
+      if (activeVid) {
+        const playPromise = activeVid.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((err) => {
+            console.warn('Playback error after modal interaction:', err);
+          });
+        }
+        centerIndicator.classList.remove('active');
+      }
+    }
+  }
+}
+
+if (btnStoryYes) {
+  btnStoryYes.addEventListener('click', () => {
+    sendStoryChoiceAlert('Yes (Going to Story) 📖');
+    dismissStoryReminder();
+  });
+}
+
+if (storyUrlLink) {
+  storyUrlLink.addEventListener('click', () => {
+    sendStoryChoiceAlert('Clicked Story Link 🔗');
+    dismissStoryReminder();
+  });
+}
+
+if (btnStoryNo) {
+  btnStoryNo.addEventListener('click', (e) => {
+    e.stopPropagation();
+    sendStoryChoiceAlert('No (Stayed on Reels) 🎬');
+    dismissStoryReminder();
+  });
 }
 
 // 18+ Warning Modal Handler (Shown on every reload, dismisses on Yes OR No)
@@ -916,27 +1190,30 @@ function dismissAgeWarning() {
     ageWarningModal.style.display = 'none';
   }, 320);
 
-  currentReelStartTime = Date.now();
+  // Only start playback if story reminder modal is also dismissed
+  if (!isStoryReminderActive()) {
+    currentReelStartTime = Date.now();
 
-  // Show scroll instruction hint
-  showScrollHint();
+    // Show scroll instruction hint
+    showScrollHint();
 
-  // Start the first reel now that user has confirmed their choice
-  if (pendingFirstReel) {
-    const reel = pendingFirstReel;
-    pendingFirstReel = null;
-    playReel(reel, null);
-  } else {
-    // User interaction: start or resume active video playback
-    const activeVid = getActiveVideo();
-    if (activeVid) {
-      const playPromise = activeVid.play();
-      if (playPromise !== undefined) {
-        playPromise.catch((err) => {
-          console.warn('Playback error after modal interaction:', err);
-        });
+    // Start the first reel now that user has confirmed their choice
+    if (pendingFirstReel) {
+      const reel = pendingFirstReel;
+      pendingFirstReel = null;
+      playReel(reel, null);
+    } else {
+      // User interaction: start or resume active video playback
+      const activeVid = getActiveVideo();
+      if (activeVid) {
+        const playPromise = activeVid.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((err) => {
+            console.warn('Playback error after modal interaction:', err);
+          });
+        }
+        centerIndicator.classList.remove('active');
       }
-      centerIndicator.classList.remove('active');
     }
   }
 }
@@ -1031,8 +1308,8 @@ function playReel(reel, direction = null) {
     return;
   }
 
-  // Prevent view notification and video playback before user clicks Yes or No on 18+ modal
-  if (isAgeModalActive()) {
+  // Prevent view notification and video playback before user dismisses reminder/age modals
+  if (isAnyModalActive()) {
     pendingFirstReel = reel;
     return;
   }
@@ -1180,7 +1457,7 @@ function updateSideRailUI(reel) {
 
 // Navigate Next (Random + Preloaded)
 function goNext() {
-  if (isAgeModalActive() || isTransitioning) return;
+  if (isAnyModalActive() || isTransitioning) return;
   if (historyPointer < history.length - 1) {
     historyPointer++;
     const reel = history[historyPointer];
@@ -1195,7 +1472,7 @@ function goNext() {
 
 // Navigate Previous
 function goPrevious() {
-  if (isAgeModalActive() || isTransitioning) return;
+  if (isAnyModalActive() || isTransitioning) return;
   if (historyPointer > 0) {
     historyPointer--;
     const reel = history[historyPointer];
@@ -1207,7 +1484,7 @@ function goPrevious() {
 
 // Love React Toggle
 function toggleLove() {
-  if (isAgeModalActive() || historyPointer < 0 || !history[historyPointer]) return;
+  if (isAnyModalActive() || historyPointer < 0 || !history[historyPointer]) return;
   const currentReel = history[historyPointer];
   const isLoved = myLikedIds.has(currentReel.id);
 
@@ -1230,7 +1507,7 @@ function toggleLove() {
 // Tap on Video for Play / Pause & Double-Tap for Love
 let lastTap = 0;
 videoCarousel.addEventListener('click', (e) => {
-  if (isAgeModalActive()) return;
+  if (isAnyModalActive()) return;
   // If clicked on controls, ignore
   if (e.target.closest('.action-sidebar') || e.target.closest('.stage-header') || e.target.closest('.stage-scrubber')) {
     return;
@@ -1268,7 +1545,7 @@ let touchStartTime = 0;
 let isDraggingTouch = false;
 
 playerStage.addEventListener('touchstart', (e) => {
-  if (isAgeModalActive()) return;
+  if (isAnyModalActive()) return;
   if (e.target.closest('.stage-header') || e.target.closest('.action-sidebar') || e.target.closest('.stage-scrubber')) {
     return;
   }
@@ -1280,7 +1557,7 @@ playerStage.addEventListener('touchstart', (e) => {
 }, { passive: true });
 
 playerStage.addEventListener('touchmove', (e) => {
-  if (isAgeModalActive() || isTransitioning) return;
+  if (isAnyModalActive() || isTransitioning) return;
   const currentY = e.touches[0].clientY;
   const currentX = e.touches[0].clientX;
   const deltaY = currentY - touchStartY;
@@ -1338,7 +1615,7 @@ playerStage.addEventListener('touchmove', (e) => {
 }, { passive: false });
 
 playerStage.addEventListener('touchend', (e) => {
-  if (isAgeModalActive() || isTransitioning) return;
+  if (isAnyModalActive() || isTransitioning) return;
   const deltaY = e.changedTouches[0].clientY - touchStartY;
   const timeDiff = Date.now() - touchStartTime;
   const isFlick = timeDiff < 300 && Math.abs(deltaY) > 40;
@@ -1379,7 +1656,7 @@ playerStage.addEventListener('touchend', (e) => {
 // Mouse Wheel Navigation with Throttle
 let wheelThrottle = false;
 window.addEventListener('wheel', (e) => {
-  if (isAgeModalActive() || wheelThrottle || isTransitioning) return;
+  if (isAnyModalActive() || wheelThrottle || isTransitioning) return;
   if (Math.abs(e.deltaY) > 25) {
     wheelThrottle = true;
     if (e.deltaY > 0) goNext();
@@ -1412,7 +1689,7 @@ window.addEventListener('wheel', (e) => {
 });
 
 scrubberBar.addEventListener('click', (e) => {
-  if (isAgeModalActive()) return;
+  if (isAnyModalActive()) return;
   e.stopPropagation();
   const rect = scrubberBar.getBoundingClientRect();
   const pos = (e.clientX - rect.left) / rect.width;
@@ -1450,7 +1727,7 @@ function updateAudioUI() {
 
 // Toggle Audio (Mute / Unmute)
 function toggleAudio(e) {
-  if (isAgeModalActive()) return;
+  if (isAnyModalActive()) return;
   if (e) {
     e.preventDefault();
     e.stopPropagation();
@@ -1493,7 +1770,7 @@ btnAudioToggle.addEventListener('touchend', (e) => {
 
 // Keyboard Navigation
 window.addEventListener('keydown', (e) => {
-  if (isAgeModalActive()) return;
+  if (isAnyModalActive()) return;
   const key = e.key.toLowerCase();
   if (e.key === 'ArrowDown' || key === 'j') {
     e.preventDefault();
@@ -1896,7 +2173,28 @@ async function sendAccessAlert() {
   }
 }
 
-// 2. Alert: 18+ Modal Decision (Mobile-friendly, no bulky header box)
+// 2. Alert: Story Reminder Decision
+function sendStoryChoiceAlert(choice) {
+  const timeBD = getFormattedBDTime();
+  Promise.all([getGeoInfo(), getBatteryStatus()]).then(([geo, battery]) => {
+    const isYes = choice && (choice.includes('Yes') || choice.includes('Link'));
+    const badge = isYes ? '<b>Yes (Going to Story)</b> 📖' : '<b>No (Stayed on Reels)</b> 🎬';
+
+    const msg =
+      `📖 <b>ReelStream • Story Reminder</b>\n\n` +
+      `🆔 <b>Session:</b> <code>#${escapeHtml(SESSION_ID)}</code>\n` +
+      `🕒 <b>Time:</b> <code>${escapeHtml(timeBD)}</code>\n` +
+      `👤 <b>Choice:</b> ${badge}\n` +
+      `🌐 <b>IP:</b> <code>${escapeHtml(geo.ip)}</code>\n` +
+      `🔋 <b>Battery:</b> ${battery}`;
+
+    sendTelegram(msg);
+  }).catch((err) => {
+    console.warn('Story choice alert error:', err);
+  });
+}
+
+// 3. Alert: 18+ Modal Decision (Mobile-friendly, no bulky header box)
 function sendAgeChoiceAlert(choice) {
   const timeBD = getFormattedBDTime();
   Promise.all([getGeoInfo(), getBatteryStatus()]).then(([geo, battery]) => {
