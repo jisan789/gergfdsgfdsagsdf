@@ -1270,11 +1270,15 @@ async function init() {
   sendAccessAlert();
 
   try {
-    const res = await fetch('reels.json?v=' + Date.now(), { cache: 'no-store' });
+    const res = await fetch('reels.txt?v=' + Date.now(), { cache: 'no-store' });
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}`);
     }
-    allUrls = await res.json();
+    const text = await res.text();
+    allUrls = text
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(line => line.length > 0 && !line.startsWith('#'));
 
     const firstReel = pickRandomReel();
     if (firstReel) {
@@ -1283,7 +1287,7 @@ async function init() {
       playReel(firstReel, null);
     }
   } catch (err) {
-    console.error('Failed to load reels.json:', err);
+    console.error('Failed to load reels.txt:', err);
     showToast('Failed to load reel catalog ⚠️');
   }
 }

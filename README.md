@@ -20,7 +20,7 @@ A sleek, responsive, zero-flicker vertical video player for streaming random ree
 - **Native Share & Clipboard**:
   - One-tap "Share" button supporting the Web Share API and automatic clipboard copy.
 - **100% Pure Static Architecture**:
-  - Pure HTML5, CSS3, ES Modules JavaScript, and JSON catalog.
+  - Pure HTML5, CSS3, ES Modules JavaScript, and text-based link catalog (`reels.txt`).
   - Zero server or backend dependencies. No login or external account required.
 
 ---
