@@ -73,8 +73,7 @@ let isStoryReminderShown = false;
 let pendingFirstReel = null;
 
 function isStoryReminderActive() {
-  if (hasUserInteractedWithStoryReminder) return false;
-  return isStoryReminderShown && storyReminderModal && !storyReminderModal.classList.contains('hidden') && storyReminderModal.style.display !== 'none';
+  return false;
 }
 
 function isAgeModalActive() {
@@ -83,17 +82,12 @@ function isAgeModalActive() {
 }
 
 function isAnyModalActive() {
-  return isAgeModalActive() || isStoryReminderActive();
+  return isAgeModalActive();
 }
 
-// Show Story Reminder (Triggered after 18+ Yes or No choice)
+// Show Story Reminder (Disabled: removed from starting flow)
 function showStoryReminder() {
-  if (hasUserInteractedWithStoryReminder) return;
-  isStoryReminderShown = true;
-  if (!storyReminderModal) return;
-  storyReminderModal.style.display = 'flex';
-  void storyReminderModal.offsetWidth;
-  storyReminderModal.classList.remove('hidden');
+  // No-op
 }
 
 // Story Reminder Modal Handler
@@ -149,7 +143,7 @@ if (btnStoryNo) {
   });
 }
 
-// 18+ Warning Modal Handler (Shown on reload; after choice, opens Story Reminder)
+// 18+ Warning Modal Handler (Shown on reload; dismisses directly into Reels)
 function dismissAgeWarning(choice) {
   hasUserInteractedWithAgeModal = true;
   if (choice) {
@@ -162,10 +156,25 @@ function dismissAgeWarning(choice) {
     }, 320);
   }
 
-  // Show the Story suggestion immediately after user selects 18+ Yes or No
-  setTimeout(() => {
-    showStoryReminder();
-  }, 120);
+  // Start video playback and show hint immediately without story reminder
+  currentReelStartTime = Date.now();
+  showScrollHint();
+  if (pendingFirstReel) {
+    const reel = pendingFirstReel;
+    pendingFirstReel = null;
+    playReel(reel, null);
+  } else {
+    const activeVid = getActiveVideo();
+    if (activeVid) {
+      const playPromise = activeVid.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          console.warn('Playback error after age warning:', err);
+        });
+      }
+      centerIndicator.classList.remove('active');
+    }
+  }
 }
 
 if (btnAgeYes) {
